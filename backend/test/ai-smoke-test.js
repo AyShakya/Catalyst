@@ -47,7 +47,7 @@ async function getBrandId() {
 async function runTest() {
   try {
     const brandId = await getBrandId();
-    console.log(`\n--- AI Audience Discovery Smoke Test ---`);
+    console.log(`\n--- AI Audience Discovery Smoke Test (Pass 1) ---`);
     console.log(`Brand ID: ${brandId}`);
     console.log(`Goal: "${goal}"`);
     console.log(`Endpoint: ${BACKEND_URL}/api/audience/discover\n`);
@@ -61,37 +61,82 @@ async function runTest() {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error(`\n❌ Error (${response.status}):`, JSON.stringify(result, null, 2));
+      console.error(`\n❌ Pass 1 Error (${response.status}):`, JSON.stringify(result, null, 2));
       process.exit(1);
     }
 
     const { data } = result;
     const { filter_plan, ai, audience_preview } = data;
 
-    console.log(`✅ Success!`);
+    console.log(`✅ Pass 1 Success!`);
     console.log(`Model: ${ai.model}`);
     console.log(`Total Attempts: ${ai.validation_attempts.length}`);
     
-    ai.validation_attempts.forEach((att, i) => {
-      const status = att.is_valid ? "✅ VALID" : "❌ INVALID";
-      console.log(`  Attempt ${att.attempt}: ${status}`);
-      if (!att.is_valid) {
-        console.log(`    Errors: ${att.errors.join(", ")}`);
-      }
-    });
-
     console.log(`\n--- Filter Plan ---`);
     console.log(JSON.stringify(filter_plan, null, 2));
 
     console.log(`\n--- Audience Preview ---`);
     console.log(JSON.stringify(audience_preview, null, 2));
-    
-    if (filter_plan.logic === "SEGMENT") {
-      console.log(`\n⚠️ Note: System fell back to a predefined segment.`);
+
+    // --- AI PASS 2: CAMPAIGN PROPOSAL ---
+    console.log(`\n--- AI Campaign Strategy Smoke Test (Pass 2) ---`);
+    console.log(`Endpoint: ${BACKEND_URL}/api/campaigns/propose\n`);
+
+    const proposeResponse = await fetch(`${BACKEND_URL}/api/campaigns/propose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        brand_id: brandId, 
+        goal, 
+        audience_preview, 
+        filter_plan 
+      })
+    });
+
+    const proposeResult = await proposeResponse.json();
+
+    if (!proposeResponse.ok) {
+      console.error(`\n❌ Pass 2 Error (${proposeResponse.status}):`, JSON.stringify(proposeResult, null, 2));
+      process.exit(1);
     }
 
-    console.log(`\nReasoning: ${filter_plan.reasoning}`);
-    console.log(`----------------------------------------\n`);
+    const { campaign, forecast } = proposeResult.data;
+
+    console.log(`✅ Pass 2 Success!`);
+    console.log(`Campaign ID: ${campaign.id}`);
+    console.log(`Campaign Name: ${campaign.campaign_name}`);
+    console.log(`Channel: ${campaign.channel}`);
+    
+    console.log(`\n--- Message Template ---`);
+    console.log(campaign.message_template);
+
+    console.log(`\n--- Strategic Reasoning ---`);
+    console.log(campaign.reasoning);
+
+    console.log(`\n--- Deterministic Forecast ---`);
+    console.log(`Audience Size: ${campaign.audience_size}`);
+    console.log(`Delivered: ${forecast.forecast_delivered}`);
+    console.log(`Opened: ${forecast.forecast_opened}`);
+    console.log(`Clicked: ${forecast.forecast_clicked}`);
+    console.log(`Purchased: ${forecast.forecast_purchased}`);
+
+    // --- TEST MANUAL MODIFICATION ---
+    console.log(`\n--- Manual Modification Test ---`);
+    const newName = `Modified: ${campaign.campaign_name}`;
+    const patchResponse = await fetch(`${BACKEND_URL}/api/campaigns/${campaign.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaign_name: newName })
+    });
+
+    const patchResult = await patchResponse.json();
+    if (patchResult.data.campaign_name === newName) {
+      console.log(`✅ Update Success: Campaign name changed to "${newName}"`);
+    } else {
+      console.log(`❌ Update Failed`);
+    }
+
+    console.log(`\n----------------------------------------\n`);
 
   } catch (error) {
     console.error("\n❌ Unexpected Error:", error.message);

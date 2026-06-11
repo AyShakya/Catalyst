@@ -48,6 +48,76 @@ async function generateAudienceFilterPlan(goal, context) {
   throw error;
 }
 
+/**
+ * AI Pass 2: Campaign Strategy
+ * 
+ * @param {string} goal - Marketer goal
+ * @param {Object} audiencePreview - Snapshot from Pass 1 execution
+ */
+async function generateCampaignStrategy(goal, audiencePreview) {
+  const sanitizedGoal = sanitizeGoal(goal);
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    const error = new Error("OPENROUTER_API_KEY is not configured");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.OPENROUTER_APP_URL || "http://localhost",
+      "X-Title": process.env.OPENROUTER_APP_NAME || "Catalyst CRM",
+    },
+    body: JSON.stringify({
+      model: getModel(),
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: buildPass2SystemPrompt(),
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            marketer_goal: sanitizedGoal,
+            audience_preview: audiencePreview,
+            task: "Develop a professional campaign strategy based on the audience metrics.",
+            required_output_schema: {
+              campaign_name: "Short, professional name",
+              channel: "WHATSAPP, EMAIL, or SMS",
+              message_template: "Personalized message template using {{name}}",
+              reasoning: "Strategic rationale including references to the audience metrics",
+            }
+          }, null, 2)
+        }
+      ]
+    })
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(
+      payload?.error?.message || `OpenRouter Pass 2 failed with ${response.status}`
+    );
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const content = extractMessageContent(payload);
+  const strategy = parseJsonObject(content);
+
+  return {
+    ...strategy,
+    model: getModel()
+  };
+}
+
 async function callOpenRouter({ goal, context, validationErrors, attempt }) {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
@@ -159,6 +229,22 @@ function buildSystemPrompt(attempt) {
   ].join("\n");
 }
 
+function buildPass2SystemPrompt() {
+  return [
+    "You are an experienced Marketing Strategist at a top-tier agency.",
+    "Your goal is to develop a professional, high-impact campaign strategy for a client.",
+    "You will be provided with a marketer goal and an audience_preview snapshot (real data from the CRM).",
+    "CRITICAL RULES:",
+    "1. Use a professional, sophisticated tone. Avoid emojis and hype-driven language.",
+    "2. Incorporate real numbers from the audience_preview (size, spend, loyalty, etc.) into your reasoning to justify your strategy.",
+    "3. Recommend exactly one channel: WHATSAPP, EMAIL, or SMS based on the goal and audience profile.",
+    "4. Create a personalized message_template using {{name}} as the placeholder.",
+    "5. Ensure the message is relevant to the audience's specific metrics (e.g., if avg_spend is high, acknowledge their value).",
+    "6. Do not mention technical internal fields like UUIDs or schema names.",
+    "7. Return exactly one JSON object with keys: campaign_name, channel, message_template, reasoning.",
+  ].join("\n");
+}
+
 function sanitizeGoal(goal) {
   if (typeof goal !== "string" || goal.trim() === "") {
     const error = new Error("goal is required");
@@ -207,4 +293,4 @@ function getModel() {
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 
-module.exports = { generateAudienceFilterPlan };
+module.exports = { generateAudienceFilterPlan, generateCampaignStrategy };
