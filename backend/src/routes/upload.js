@@ -2,6 +2,7 @@ const express = require("express");
 const { parseCSV } = require("../utils/csv-parser");
 const { ingestCustomers } = require("../services/upload/customer-ingestion");
 const { ingestOrders } = require("../services/upload/order-ingestion");
+const { regenerateMetrics } = require("../services/analytics/metrics-generator");
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.post("/upload", async (req, res) => {
     const results = {
       customers: null,
       orders: null,
+      metrics: null,
     };
 
     if (customerCsv) {
@@ -38,6 +40,14 @@ router.post("/upload", async (req, res) => {
       const orderBuffer = Buffer.from(orderCsv, "base64");
       const orderRecords = await parseCSV(orderBuffer);
       results.orders = await ingestOrders(orderRecords, brandId);
+    }
+
+    // Automatically regenerate metrics after successful upload
+    try {
+      results.metrics = await regenerateMetrics(brandId);
+    } catch (metricsError) {
+      console.warn("Metrics regeneration warning (non-critical):", metricsError.message);
+      results.metrics_error = metricsError.message;
     }
 
     res.json({

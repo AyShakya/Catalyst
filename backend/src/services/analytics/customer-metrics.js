@@ -1,0 +1,195 @@
+const { query } = require("../../config/db");
+
+async function calculateCustomerMetrics(brandId) {
+  const calculateSQL = `
+    WITH order_stats AS (
+      SELECT
+        customer_id,
+        COUNT(*) as total_orders,
+        SUM(amount) as total_spend,
+        AVG(amount) as avg_order_value,
+        MAX(amount) as highest_order_value,
+        MIN(amount) as lowest_order_value,
+        MIN(order_date) as first_purchase_date,
+        MAX(order_date) as last_purchase_date,
+        ARRAY_AGG(order_date ORDER BY order_date) as order_dates
+      FROM orders
+      WHERE brand_id = $1
+      GROUP BY customer_id
+    ),
+    gaps_calculation AS (
+      SELECT
+        customer_id,
+        total_orders,
+        total_spend,
+        avg_order_value,
+        highest_order_value,
+        lowest_order_value,
+        first_purchase_date,
+        last_purchase_date,
+        (CURRENT_DATE - last_purchase_date)::INTEGER as days_since_last_purchase,
+        order_dates,
+        CASE
+          WHEN total_orders = 1 THEN NULL
+          ELSE (
+            SELECT AVG(gap)::NUMERIC
+            FROM (
+              SELECT (order_dates[i+1] - order_dates[i])::INTEGER as gap
+              FROM generate_subscripts(order_dates, 1) i
+              WHERE i < array_length(order_dates, 1)
+            ) gaps
+          )
+        END as avg_days_between_orders
+      FROM order_stats
+    ),
+    frequency_calculation AS (
+      SELECT
+        customer_id,
+        total_orders,
+        total_spend,
+        avg_order_value,
+        highest_order_value,
+        lowest_order_value,
+        first_purchase_date,
+        last_purchase_date,
+        days_since_last_purchase,
+        avg_days_between_orders,
+        total_spend as customer_lifetime_value,
+        (
+          total_orders::NUMERIC /
+          GREATEST((EXTRACT(EPOCH FROM (last_purchase_date - first_purchase_date)) / 2592000)::INTEGER + 1, 1)
+        )::NUMERIC(14,4) as purchase_frequency
+      FROM gaps_calculation
+    ),
+    percentile_ranks AS (
+      SELECT
+        $1 as brand_id,
+        PERCENTILE_CONT(0.0) WITHIN GROUP (ORDER BY total_spend) as p0_spend,
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY total_spend) as p25_spend,
+        PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY total_spend) as p50_spend,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY total_spend) as p75_spend,
+        PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY total_spend) as p90_spend,
+        PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY total_spend) as p95_spend,
+        PERCENTILE_CONT(1.0) WITHIN GROUP (ORDER BY total_spend) as p100_spend,
+        AVG(avg_days_between_orders) FILTER (WHERE avg_days_between_orders IS NOT NULL) as avg_gap_days
+      FROM frequency_calculation
+    ),
+    loyalty_churn_calculation AS (
+      SELECT
+        fc.customer_id,
+        fc.total_orders,
+        fc.total_spend,
+        fc.avg_order_value,
+        fc.highest_order_value,
+        fc.lowest_order_value,
+        fc.first_purchase_date,
+        fc.last_purchase_date,
+        fc.days_since_last_purchase,
+        fc.avg_days_between_orders,
+        fc.customer_lifetime_value,
+        fc.purchase_frequency,
+        pr.p0_spend,
+        pr.p25_spend,
+        pr.p50_spend,
+        pr.p75_spend,
+        pr.p90_spend,
+        pr.p95_spend,
+        pr.p100_spend,
+        pr.avg_gap_days,
+        -- Loyalty Score: 40% spend + 40% frequency + 20% recency
+        ROUND(
+          (
+            CASE
+              WHEN pr.p100_spend > pr.p0_spend THEN
+                (LEAST(fc.total_spend, pr.p100_spend) - pr.p0_spend) / (pr.p100_spend - pr.p0_spend) * 40
+              ELSE 0
+            END +
+            CASE
+              WHEN fc.purchase_frequency > 0 THEN LEAST(fc.purchase_frequency, 10) * 4
+              ELSE 0
+            END +
+            CASE
+              WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
+                GREATEST(0, (1 - LEAST(fc.days_since_last_purchase::NUMERIC / pr.avg_gap_days, 1)) * 20)
+              ELSE 0
+            END
+          ), 2
+        )::NUMERIC(6,2) as loyalty_score,
+        -- Churn Score: Based on days_since relative to avg gap
+        ROUND(
+          CASE
+            WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
+              LEAST(
+                ((fc.days_since_last_purchase::NUMERIC / NULLIF(fc.avg_days_between_orders, 0)) * 100),
+                100
+              )
+            ELSE 0
+          END, 2
+        )::NUMERIC(6,2) as churn_score
+      FROM frequency_calculation fc
+      CROSS JOIN percentile_ranks pr
+    )
+    INSERT INTO customer_metrics (
+      customer_id,
+      total_spend,
+      total_orders,
+      avg_order_value,
+      highest_order_value,
+      lowest_order_value,
+      first_purchase_date,
+      last_purchase_date,
+      days_since_last_purchase,
+      customer_lifetime_value,
+      avg_days_between_orders,
+      purchase_frequency,
+      loyalty_score,
+      churn_score,
+      updated_at
+    )
+    SELECT
+      customer_id,
+      total_spend,
+      total_orders,
+      avg_order_value,
+      highest_order_value,
+      lowest_order_value,
+      first_purchase_date,
+      last_purchase_date,
+      days_since_last_purchase,
+      customer_lifetime_value,
+      avg_days_between_orders,
+      purchase_frequency,
+      loyalty_score,
+      churn_score,
+      NOW()
+    FROM loyalty_churn_calculation
+    ON CONFLICT (customer_id)
+    DO UPDATE SET
+      total_spend = EXCLUDED.total_spend,
+      total_orders = EXCLUDED.total_orders,
+      avg_order_value = EXCLUDED.avg_order_value,
+      highest_order_value = EXCLUDED.highest_order_value,
+      lowest_order_value = EXCLUDED.lowest_order_value,
+      first_purchase_date = EXCLUDED.first_purchase_date,
+      last_purchase_date = EXCLUDED.last_purchase_date,
+      days_since_last_purchase = EXCLUDED.days_since_last_purchase,
+      customer_lifetime_value = EXCLUDED.customer_lifetime_value,
+      avg_days_between_orders = EXCLUDED.avg_days_between_orders,
+      purchase_frequency = EXCLUDED.purchase_frequency,
+      loyalty_score = EXCLUDED.loyalty_score,
+      churn_score = EXCLUDED.churn_score,
+      updated_at = NOW();
+  `;
+
+  const result = await query(calculateSQL, [brandId]);
+  const countResult = await query(
+    "SELECT COUNT(*) as count FROM customer_metrics WHERE customer_id IN (SELECT id FROM customers WHERE brand_id = $1)",
+    [brandId]
+  );
+
+  return {
+    metrics_calculated: parseInt(countResult.rows[0].count),
+  };
+}
+
+module.exports = { calculateCustomerMetrics };

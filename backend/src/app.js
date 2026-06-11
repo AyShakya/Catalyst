@@ -1,5 +1,6 @@
 const express = require("express");
 const uploadRoutes = require("./routes/upload");
+const metricsRoutes = require("./routes/metrics");
 
 const app = express();
 
@@ -11,5 +12,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api", uploadRoutes);
+app.use("/api/metrics", metricsRoutes);
 
 module.exports = app;
