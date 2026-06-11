@@ -1,6 +1,7 @@
 const express = require("express");
 const uploadRoutes = require("./routes/upload");
 const metricsRoutes = require("./routes/metrics");
+const audienceRoutes = require("./routes/audience");
 
 const app = express();
 
@@ -13,5 +14,6 @@ app.get("/health", (req, res) => {
 
 app.use("/api", uploadRoutes);
 app.use("/api/metrics", metricsRoutes);
+app.use("/api/audience", audienceRoutes);
 
 module.exports = app;
