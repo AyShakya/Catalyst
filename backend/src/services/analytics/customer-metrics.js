@@ -34,7 +34,7 @@ async function calculateCustomerMetrics(brandId) {
           ELSE (
             SELECT AVG(gap)::NUMERIC
             FROM (
-              SELECT (order_dates[i+1] - order_dates[i])::INTEGER as gap
+              SELECT (order_dates[i + 1] - order_dates[i])::INTEGER as gap
               FROM generate_subscripts(order_dates, 1) i
               WHERE i < array_length(order_dates, 1)
             ) gaps
@@ -57,7 +57,13 @@ async function calculateCustomerMetrics(brandId) {
         total_spend as customer_lifetime_value,
         (
           total_orders::NUMERIC /
-          GREATEST((EXTRACT(EPOCH FROM (last_purchase_date - first_purchase_date)) / 2592000)::INTEGER + 1, 1)
+          GREATEST(
+            (
+              (EXTRACT(YEAR FROM age(last_purchase_date, first_purchase_date)) * 12) +
+              EXTRACT(MONTH FROM age(last_purchase_date, first_purchase_date)) + 1
+            )::NUMERIC,
+            1
+          )
         )::NUMERIC(14,4) as purchase_frequency
       FROM gaps_calculation
     ),
@@ -96,35 +102,39 @@ async function calculateCustomerMetrics(brandId) {
         pr.p95_spend,
         pr.p100_spend,
         pr.avg_gap_days,
-        -- Loyalty Score: 40% spend + 40% frequency + 20% recency
+        ROUND(
+          (
+            (
+              CASE
+                WHEN pr.p100_spend > pr.p0_spend THEN
+                  (LEAST(fc.total_spend, pr.p100_spend) - pr.p0_spend) / (pr.p100_spend - pr.p0_spend) * 40
+                ELSE 0
+              END +
+              CASE
+                WHEN fc.purchase_frequency > 0 THEN LEAST(fc.purchase_frequency, 10) * 4
+                ELSE 0
+              END +
+              CASE
+                WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
+                  GREATEST(0, (1 - LEAST(fc.days_since_last_purchase::NUMERIC / pr.avg_gap_days, 1)) * 20)
+                ELSE 0
+              END
+            )
+          )::NUMERIC,
+          2
+        )::NUMERIC(6,2) as loyalty_score,
         ROUND(
           (
             CASE
-              WHEN pr.p100_spend > pr.p0_spend THEN
-                (LEAST(fc.total_spend, pr.p100_spend) - pr.p0_spend) / (pr.p100_spend - pr.p0_spend) * 40
-              ELSE 0
-            END +
-            CASE
-              WHEN fc.purchase_frequency > 0 THEN LEAST(fc.purchase_frequency, 10) * 4
-              ELSE 0
-            END +
-            CASE
               WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
-                GREATEST(0, (1 - LEAST(fc.days_since_last_purchase::NUMERIC / pr.avg_gap_days, 1)) * 20)
+                LEAST(
+                  ((fc.days_since_last_purchase::NUMERIC / NULLIF(fc.avg_days_between_orders, 0)) * 100),
+                  100
+                )
               ELSE 0
             END
-          ), 2
-        )::NUMERIC(6,2) as loyalty_score,
-        -- Churn Score: Based on days_since relative to avg gap
-        ROUND(
-          CASE
-            WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
-              LEAST(
-                ((fc.days_since_last_purchase::NUMERIC / NULLIF(fc.avg_days_between_orders, 0)) * 100),
-                100
-              )
-            ELSE 0
-          END, 2
+          )::NUMERIC,
+          2
         )::NUMERIC(6,2) as churn_score
       FROM frequency_calculation fc
       CROSS JOIN percentile_ranks pr
@@ -181,14 +191,15 @@ async function calculateCustomerMetrics(brandId) {
       updated_at = NOW();
   `;
 
-  const result = await query(calculateSQL, [brandId]);
+  await query(calculateSQL, [brandId]);
+
   const countResult = await query(
     "SELECT COUNT(*) as count FROM customer_metrics WHERE customer_id IN (SELECT id FROM customers WHERE brand_id = $1)",
     [brandId]
   );
 
   return {
-    metrics_calculated: parseInt(countResult.rows[0].count),
+    metrics_calculated: parseInt(countResult.rows[0].count, 10),
   };
 }
 

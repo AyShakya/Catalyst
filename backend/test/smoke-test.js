@@ -2,9 +2,12 @@
 
 const fs = require("fs");
 const path = require("path");
+const dotenv = require("dotenv");
 const pg = require("pg");
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
+const BACKEND_URL = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
@@ -14,7 +17,28 @@ if (!DATABASE_URL) {
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
+async function waitForBackend(maxAttempts = 30, delayMs = 1000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(`${BACKEND_URL}/health`);
+      if (response.ok) {
+        return;
+      }
+    } catch (error) {
+      // keep retrying until the API is ready
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error(`Backend not reachable at ${BACKEND_URL}/health`);
+}
+
 async function main() {
+  await waitForBackend();
+
   const customerCsvPath = path.join(__dirname, "customer.csv");
   const orderCsvPath = path.join(__dirname, "order.csv");
 
