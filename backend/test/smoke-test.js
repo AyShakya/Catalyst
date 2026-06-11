@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
 const dotenv = require("dotenv");
 const pg = require("pg");
 
@@ -16,16 +17,21 @@ if (!DATABASE_URL) {
 }
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
+let backendProcess = null;
+
+async function isBackendHealthy() {
+  try {
+    const response = await fetch(`${BACKEND_URL}/health`);
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
 
 async function waitForBackend(maxAttempts = 30, delayMs = 1000) {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const response = await fetch(`${BACKEND_URL}/health`);
-      if (response.ok) {
-        return;
-      }
-    } catch (error) {
-      // keep retrying until the API is ready
+    if (await isBackendHealthy()) {
+      return;
     }
 
     if (attempt < maxAttempts) {
@@ -36,8 +42,24 @@ async function waitForBackend(maxAttempts = 30, delayMs = 1000) {
   throw new Error(`Backend not reachable at ${BACKEND_URL}/health`);
 }
 
+async function startBackendIfNeeded() {
+  if (await isBackendHealthy()) {
+    return false;
+  }
+
+  const serverPath = path.join(__dirname, "..", "src", "server.js");
+  backendProcess = spawn(process.execPath, [serverPath], {
+    cwd: path.join(__dirname, ".."),
+    stdio: ["ignore", "inherit", "inherit"],
+    env: process.env,
+  });
+
+  await waitForBackend(60, 1000);
+  return true;
+}
+
 async function main() {
-  await waitForBackend();
+  const startedBackend = await startBackendIfNeeded();
 
   const customerCsvPath = path.join(__dirname, "customer.csv");
   const orderCsvPath = path.join(__dirname, "order.csv");
@@ -109,13 +131,18 @@ async function main() {
 
   console.log("\nMetrics history response:");
   console.log(JSON.stringify(historyResult, null, 2));
+
+  return { startedBackend };
 }
 
 main()
   .catch((error) => {
     console.error("Smoke test failed:", error);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await pool.end();
+    if (backendProcess) {
+      backendProcess.kill("SIGTERM");
+    }
   });
