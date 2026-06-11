@@ -11,7 +11,7 @@ const DISTRIBUTION_BUCKETS = {
     { label: "1", min: 1, max: 1 },
     { label: "2-5", min: 2, max: 5 },
     { label: "6-10", min: 6, max: 10 },
-    { label: "10+", min: 10, max: null },
+    { label: "10+", min: 11, max: null },
   ],
   days_since_last_purchase: [
     { label: "0-30", min: 0, max: 30 },
@@ -33,8 +33,8 @@ const DISTRIBUTION_BUCKETS = {
   ],
 };
 
-async function generateMetricDistributions(brandId) {
-  await query("DELETE FROM metric_distributions WHERE brand_id = $1", [brandId]);
+async function generateMetricDistributions(brandId, db = { query }) {
+  await db.query("DELETE FROM metric_distributions WHERE brand_id = $1", [brandId]);
 
   for (const [metricName, buckets] of Object.entries(DISTRIBUTION_BUCKETS)) {
     for (const bucket of buckets) {
@@ -42,10 +42,11 @@ async function generateMetricDistributions(brandId) {
         brandId,
         metricName,
         bucket.min,
-        bucket.max
+        bucket.max,
+        db
       );
 
-      await query(
+      await db.query(
         `INSERT INTO metric_distributions
         (brand_id, metric_name, bucket_label, customer_count, generated_at)
         VALUES ($1, $2, $3, $4, NOW())`,
@@ -54,7 +55,7 @@ async function generateMetricDistributions(brandId) {
     }
   }
 
-  const result = await query(
+  const result = await db.query(
     "SELECT COUNT(*) as distribution_count FROM metric_distributions WHERE brand_id = $1",
     [brandId]
   );
@@ -64,7 +65,7 @@ async function generateMetricDistributions(brandId) {
   };
 }
 
-async function getCustomerCountInBucket(brandId, metricName, minValue, maxValue) {
+async function getCustomerCountInBucket(brandId, metricName, minValue, maxValue, db = { query }) {
   const conditions = ["c.brand_id = $1"];
   const params = [brandId];
 
@@ -112,7 +113,7 @@ async function getCustomerCountInBucket(brandId, metricName, minValue, maxValue)
     WHERE ${conditions.join(" AND ")}
   `;
 
-  const result = await query(sql, params);
+  const result = await db.query(sql, params);
   return result.rows[0].count;
 }
 

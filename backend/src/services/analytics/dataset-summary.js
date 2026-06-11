@@ -1,6 +1,6 @@
 const { query } = require("../../config/db");
 
-async function generateDatasetSummary(brandId) {
+async function generateDatasetSummary(brandId, db = { query }) {
   const sql = `
     INSERT INTO dataset_summary (
       brand_id,
@@ -59,9 +59,9 @@ async function generateDatasetSummary(brandId) {
       generated_at = NOW();
   `;
 
-  await query(sql, [brandId]);
+  await db.query(sql, [brandId]);
 
-  const result = await query(
+  const result = await db.query(
     "SELECT * FROM dataset_summary WHERE brand_id = $1",
     [brandId]
   );

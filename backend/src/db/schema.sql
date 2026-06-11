@@ -161,18 +161,65 @@ CREATE TABLE IF NOT EXISTS campaign_metrics (
   calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+INSERT INTO metric_registry (metric_name, field_type, allowed_operators, is_attribute)
+VALUES
+  ('total_spend', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('total_orders', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('avg_order_value', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('purchase_frequency', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('days_since_last_purchase', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('loyalty_score', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('churn_score', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('city', 'string', ARRAY['=', '!=', 'IN'], TRUE),
+  ('state', 'string', ARRAY['=', '!=', 'IN'], TRUE),
+  ('country', 'string', ARRAY['=', '!=', 'IN'], TRUE)
+ON CONFLICT (metric_name)
+DO UPDATE SET
+  field_type = EXCLUDED.field_type,
+  allowed_operators = EXCLUDED.allowed_operators,
+  is_attribute = EXCLUDED.is_attribute;
+
+INSERT INTO segment_registry (segment_name, description)
+VALUES
+  ('VIP', 'High-value customers with strong loyalty (loyalty_score > 75 AND total_spend > p90)'),
+  ('Inactive', 'Dormant customers (days_since_last_purchase > 90)'),
+  ('Frequent Buyers', 'Regular purchasers (total_orders > 10)'),
+  ('At Risk', 'Churning customers (churn_score > 75)'),
+  ('New Customers', 'Recently acquired (days_since_last_purchase < 30 AND total_orders = 1)'),
+  ('High Spenders', 'Top revenue generators (total_spend > p95)')
+ON CONFLICT (segment_name)
+DO UPDATE SET description = EXCLUDED.description;
+
 CREATE INDEX IF NOT EXISTS idx_customers_email ON customers (email);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers (phone);
 CREATE INDEX IF NOT EXISTS idx_customers_brand_id ON customers (brand_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_brand_external_id_unique
+  ON customers (brand_id, external_customer_id)
+  WHERE external_customer_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_brand_email_unique
+  ON customers (brand_id, email)
+  WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_brand_phone_unique
+  ON customers (brand_id, phone)
+  WHERE phone IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders (customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_order_date ON orders (order_date);
 CREATE INDEX IF NOT EXISTS idx_orders_brand_id ON orders (brand_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_brand_external_id_unique
+  ON orders (brand_id, external_order_id)
+  WHERE external_order_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_customer_metrics_total_spend ON customer_metrics (total_spend);
 CREATE INDEX IF NOT EXISTS idx_customer_metrics_days_since_last_purchase ON customer_metrics (days_since_last_purchase);
 CREATE INDEX IF NOT EXISTS idx_customer_metrics_loyalty_score ON customer_metrics (loyalty_score);
 CREATE INDEX IF NOT EXISTS idx_customer_metrics_churn_score ON customer_metrics (churn_score);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_metric_distributions_brand_metric_bucket
+  ON metric_distributions (brand_id, metric_name, bucket_label);
+
+CREATE INDEX IF NOT EXISTS idx_metrics_jobs_brand_id ON metrics_generation_jobs (brand_id);
+CREATE INDEX IF NOT EXISTS idx_metrics_jobs_status ON metrics_generation_jobs (status);
 
 CREATE INDEX IF NOT EXISTS idx_communications_campaign_id ON communications (campaign_id);
 CREATE INDEX IF NOT EXISTS idx_communications_customer_id ON communications (customer_id);

@@ -6,7 +6,10 @@ const pool = new Pool({
 
 const query = (text, params) => pool.query(text, params);
 
+const getClient = () => pool.connect();
+
 module.exports = {
   pool,
   query,
+  getClient,
 };

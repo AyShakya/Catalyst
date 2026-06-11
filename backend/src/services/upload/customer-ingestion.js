@@ -1,11 +1,15 @@
 const { query } = require("../../config/db");
 const { validateCustomerRecord } = require("../../utils/validation");
 
-async function ingestCustomers(records, brandId) {
+const MAX_ERROR_DETAILS = 50;
+
+async function ingestCustomers(records, brandId, db = { query }) {
   const results = {
     successful: 0,
     failed: 0,
     duplicates: 0,
+    total_records: records.length,
+    error_details_truncated: false,
     errors: [],
   };
 
@@ -15,7 +19,7 @@ async function ingestCustomers(records, brandId) {
 
     if (!validation.isValid) {
       results.failed++;
-      results.errors.push({
+      addError(results, {
         row: i + 2,
         record: record.external_customer_id || record.email,
         errors: validation.errors,
@@ -28,19 +32,20 @@ async function ingestCustomers(records, brandId) {
         brandId,
         record.external_customer_id,
         record.email,
-        record.phone
+        record.phone,
+        db
       );
 
       if (existing) {
-        await updateCustomer(existing.id, record);
+        await updateCustomer(existing.id, record, db);
         results.duplicates++;
       } else {
-        await createCustomer(brandId, record);
+        await createCustomer(brandId, record, db);
         results.successful++;
       }
     } catch (error) {
       results.failed++;
-      results.errors.push({
+      addError(results, {
         row: i + 2,
         record: record.external_customer_id || record.email,
         error: error.message,
@@ -55,12 +60,11 @@ async function findExistingCustomer(
   brandId,
   externalId,
   email,
-  phone
+  phone,
+  db = { query }
 ) {
-  let result = null;
-
   if (externalId) {
-    const res = await query(
+    const res = await db.query(
       "SELECT id FROM customers WHERE brand_id = $1 AND external_customer_id = $2",
       [brandId, externalId]
     );
@@ -68,7 +72,7 @@ async function findExistingCustomer(
   }
 
   if (email) {
-    const res = await query(
+    const res = await db.query(
       "SELECT id FROM customers WHERE brand_id = $1 AND email = $2",
       [brandId, email]
     );
@@ -76,7 +80,7 @@ async function findExistingCustomer(
   }
 
   if (phone) {
-    const res = await query(
+    const res = await db.query(
       "SELECT id FROM customers WHERE brand_id = $1 AND phone = $2",
       [brandId, phone]
     );
@@ -86,8 +90,8 @@ async function findExistingCustomer(
   return null;
 }
 
-async function createCustomer(brandId, record) {
-  const res = await query(
+async function createCustomer(brandId, record, db = { query }) {
+  const res = await db.query(
     `INSERT INTO customers 
     (brand_id, external_customer_id, name, email, phone, city, state, country)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -106,8 +110,8 @@ async function createCustomer(brandId, record) {
   return res.rows[0].id;
 }
 
-async function updateCustomer(customerId, record) {
-  await query(
+async function updateCustomer(customerId, record, db = { query }) {
+  await db.query(
     `UPDATE customers 
     SET name = COALESCE($1, name),
         email = COALESCE($2, email),
@@ -127,6 +131,15 @@ async function updateCustomer(customerId, record) {
       customerId,
     ]
   );
+}
+
+function addError(results, error) {
+  if (results.errors.length < MAX_ERROR_DETAILS) {
+    results.errors.push(error);
+    return;
+  }
+
+  results.error_details_truncated = true;
 }
 
 module.exports = { ingestCustomers };

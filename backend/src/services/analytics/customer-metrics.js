@@ -1,6 +1,6 @@
 const { query } = require("../../config/db");
 
-async function calculateCustomerMetrics(brandId) {
+async function calculateCustomerMetrics(brandId, db = { query }) {
   const calculateSQL = `
     WITH order_stats AS (
       SELECT
@@ -191,9 +191,9 @@ async function calculateCustomerMetrics(brandId) {
       updated_at = NOW();
   `;
 
-  await query(calculateSQL, [brandId]);
+  await db.query(calculateSQL, [brandId]);
 
-  const countResult = await query(
+  const countResult = await db.query(
     "SELECT COUNT(*) as count FROM customer_metrics WHERE customer_id IN (SELECT id FROM customers WHERE brand_id = $1)",
     [brandId]
   );

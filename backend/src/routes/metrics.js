@@ -1,4 +1,5 @@
 const express = require("express");
+const { query } = require("../config/db");
 const {
   regenerateMetrics,
   getMetricsJobHistory,
@@ -14,6 +15,10 @@ router.post("/rebuild", async (req, res) => {
       return res
         .status(400)
         .json({ error: "brand_id is required in request body" });
+    }
+
+    if (!(await doesBrandExist(brand_id))) {
+      return res.status(404).json({ error: "brand_id was not found" });
     }
 
     const result = await regenerateMetrics(brand_id);
@@ -34,9 +39,13 @@ router.post("/rebuild", async (req, res) => {
 router.get("/history/:brand_id", async (req, res) => {
   try {
     const { brand_id } = req.params;
-    const limit = req.query.limit || 10;
+    const limit = parseLimit(req.query.limit);
 
-    const jobs = await getMetricsJobHistory(brand_id, parseInt(limit));
+    if (!(await doesBrandExist(brand_id))) {
+      return res.status(404).json({ error: "brand_id was not found" });
+    }
+
+    const jobs = await getMetricsJobHistory(brand_id, limit);
 
     res.json({
       status: "success",
@@ -50,5 +59,20 @@ router.get("/history/:brand_id", async (req, res) => {
     });
   }
 });
+
+function parseLimit(rawLimit) {
+  const parsedLimit = parseInt(rawLimit || 10, 10);
+
+  if (Number.isNaN(parsedLimit)) {
+    return 10;
+  }
+
+  return Math.min(Math.max(parsedLimit, 1), 100);
+}
+
+async function doesBrandExist(brandId) {
+  const result = await query("SELECT 1 FROM brands WHERE id = $1", [brandId]);
+  return result.rows.length > 0;
+}
 
 module.exports = router;

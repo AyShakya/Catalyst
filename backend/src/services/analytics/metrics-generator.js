@@ -2,14 +2,15 @@ const { query } = require("../../config/db");
 const { calculateCustomerMetrics } = require("./customer-metrics");
 const { generateDatasetSummary } = require("./dataset-summary");
 const { generateMetricDistributions } = require("./metric-distributions");
+const { seedMetricRegistry } = require("./metric-registry");
 const { seedSegmentRegistry } = require("./segment-registry");
 
-async function regenerateMetrics(brandId) {
+async function regenerateMetrics(brandId, db = { query }) {
   let jobId;
 
   try {
     // Create job record
-    const jobRes = await query(
+    const jobRes = await db.query(
       `INSERT INTO metrics_generation_jobs 
        (brand_id, status, started_at)
        VALUES ($1, 'RUNNING', NOW())
@@ -19,23 +20,24 @@ async function regenerateMetrics(brandId) {
     jobId = jobRes.rows[0].id;
 
     // Step 1: Calculate customer metrics
-    const metricsResult = await calculateCustomerMetrics(brandId);
+    const metricsResult = await calculateCustomerMetrics(brandId, db);
 
     // Step 2: Generate dataset summary
-    const datasetResult = await generateDatasetSummary(brandId);
+    const datasetResult = await generateDatasetSummary(brandId, db);
 
     // Step 3: Generate metric distributions
-    const distResult = await generateMetricDistributions(brandId);
+    const distResult = await generateMetricDistributions(brandId, db);
 
-    // Step 4: Seed segment registry (only once)
-    const segmentResult = await seedSegmentRegistry();
+    // Step 4: Seed registries used by audience discovery.
+    const registryResult = await seedMetricRegistry(db);
+    const segmentResult = await seedSegmentRegistry(db);
 
     const recordsProcessed =
       metricsResult.metrics_calculated +
       (distResult.distributions_generated || 0);
 
     // Update job as completed
-    await query(
+    await db.query(
       `UPDATE metrics_generation_jobs
        SET status = 'COMPLETED', 
            completed_at = NOW(),
@@ -50,12 +52,13 @@ async function regenerateMetrics(brandId) {
       customer_metrics_calculated: metricsResult.metrics_calculated,
       dataset_summary: datasetResult,
       distributions_generated: distResult.distributions_generated,
+      registry_entries_seeded: registryResult.registry_entries_seeded,
       segments_seeded: segmentResult.segments_seeded,
       total_records_processed: recordsProcessed,
     };
   } catch (error) {
     if (jobId) {
-      await query(
+      await db.query(
         `UPDATE metrics_generation_jobs
          SET status = 'FAILED',
              completed_at = NOW(),
@@ -70,12 +73,13 @@ async function regenerateMetrics(brandId) {
 }
 
 async function getMetricsJobHistory(brandId, limit = 10) {
+  const boundedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
   const result = await query(
     `SELECT * FROM metrics_generation_jobs 
      WHERE brand_id = $1
      ORDER BY created_at DESC
      LIMIT $2`,
-    [brandId, limit]
+    [brandId, boundedLimit]
   );
 
   return result.rows;

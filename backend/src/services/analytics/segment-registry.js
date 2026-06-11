@@ -27,17 +27,18 @@ const FALLBACK_SEGMENTS = [
   },
 ];
 
-async function seedSegmentRegistry() {
+async function seedSegmentRegistry(db = { query }) {
   for (const segment of FALLBACK_SEGMENTS) {
-    await query(
+    await db.query(
       `INSERT INTO segment_registry (segment_name, description)
        VALUES ($1, $2)
-       ON CONFLICT (segment_name) DO NOTHING`,
+       ON CONFLICT (segment_name)
+       DO UPDATE SET description = EXCLUDED.description`,
       [segment.segment_name, segment.description]
     );
   }
 
-  const result = await query(
+  const result = await db.query(
     "SELECT COUNT(*) as count FROM segment_registry"
   );
 
