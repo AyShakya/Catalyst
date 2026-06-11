@@ -1,0 +1,4 @@
+external_customer_id,name,email,phone,city,state,country
+CUST-001,Alice Johnson,alice@example.com,5551234567,New York,NY,USA
+CUST-002,Bob Smith,bob@example.com,5552345678,Chicago,IL,USA
+CUST-003,Carla Gomez,carla@example.com,5553456789,Austin,TX,USA
