@@ -227,6 +227,38 @@ async function executeCampaign(req, res) {
   }
 }
 
+async function getCampaignMetrics(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await query("SELECT * FROM campaign_metrics WHERE campaign_id = $1", [id]);
+    
+    if (result.rows.length === 0) {
+      return res.json({
+        status: "success",
+        data: {
+          campaign_id: id,
+          total_sent: 0,
+          total_delivered: 0,
+          total_opened: 0,
+          total_clicked: 0,
+          delivery_rate: 0,
+          open_rate: 0,
+          ctr: 0,
+          conversion_rate: 0,
+          calculated_at: new Date()
+        }
+      });
+    }
+
+    res.json({
+      status: "success",
+      data: result.rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 async function getCampaign(req, res) {
   try {
     const { id } = req.params;
@@ -245,4 +277,4 @@ async function getCampaign(req, res) {
   }
 }
 
-module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign };
+module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics };

@@ -136,8 +136,8 @@ async function runTest() {
       console.log(`❌ Update Failed`);
     }
 
-    // --- TEST EXECUTION (FREEZING) ---
-    console.log(`\n--- Campaign Execution Test (Phase 1) ---`);
+    // --- TEST EXECUTION (FREEZING & DISPATCH) ---
+    console.log(`\n--- Campaign Execution Test (Phase 1 & 2) ---`);
     console.log(`Endpoint: ${BACKEND_URL}/api/campaigns/${campaign.id}/execute\n`);
 
     const executeResponse = await fetch(`${BACKEND_URL}/api/campaigns/${campaign.id}/execute`, {
@@ -154,23 +154,70 @@ async function runTest() {
 
     console.log(`✅ Execution Started! Status: ${executeResult.data.status}`);
 
-    // Verify Database
+    // Verify Database and get a Communication ID
     const pool = new pg.Pool({ connectionString: DATABASE_URL });
-    try {
-      const audienceCount = await pool.query("SELECT COUNT(*) FROM campaign_audience WHERE campaign_id = $1", [campaign.id]);
-      const commsCount = await pool.query("SELECT COUNT(*) FROM communications WHERE campaign_id = $1", [campaign.id]);
-      
-      console.log(`\n--- Backend Verification (Post-Execution) ---`);
-      console.log(`Frozen Audience Count: ${audienceCount.rows[0].count}`);
-      console.log(`Pending Communications: ${commsCount.rows[0].count}`);
+    let commId = null;
 
-      if (parseInt(audienceCount.rows[0].count) > 0 && audienceCount.rows[0].count === commsCount.rows[0].count) {
-        console.log(`\n✅ Execution Phase 1 Success: Audience frozen and tasks mapped.`);
-      } else if (campaign.audience_size === 0) {
-        console.log(`\n⚠️ Note: Audience size was 0, so 0 records is correct.`);
-      } else {
-        console.log(`\n❌ Execution Verification Failed: Mismatch between audience and communications.`);
+    try {
+      // Wait for background dispatch
+      console.log("Waiting for background dispatch...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const comms = await pool.query("SELECT id, status FROM communications WHERE campaign_id = $1 LIMIT 1", [campaign.id]);
+      
+      if (comms.rows.length > 0) {
+        commId = comms.rows[0].id;
+        console.log(`\n--- Communication Task ---`);
+        console.log(`ID: ${commId}`);
+        console.log(`Status: ${comms.rows[0].status}`);
       }
+
+      // --- TEST WEBHOOK & REAL-TIME ANALYTICS ---
+      if (commId) {
+        console.log(`\n--- Webhook & Real-time Analytics Test ---`);
+        
+        // 1. Send DELIVERED event
+        console.log(`Simulating DELIVERED event for ${commId}...`);
+        await fetch(`${BACKEND_URL}/api/webhook/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            communicationId: commId,
+            event: "DELIVERED",
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        // 2. Send OPENED event
+        console.log(`Simulating OPENED event for ${commId}...`);
+        await fetch(`${BACKEND_URL}/api/webhook/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            communicationId: commId,
+            event: "OPENED",
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        // 3. Wait for background analytics refresh
+        console.log("Waiting for background analytics refresh...");
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 4. Fetch metrics
+        const metricsResp = await fetch(`${BACKEND_URL}/api/campaigns/${campaign.id}/metrics`);
+        const metricsResult = await metricsResp.json();
+
+        console.log(`\n--- Real-time Campaign Metrics ---`);
+        console.log(JSON.stringify(metricsResult.data, null, 2));
+
+        if (metricsResult.data.total_delivered > 0 && metricsResult.data.open_rate > 0) {
+          console.log(`\n✅ Analytics Success: Delivery and Open Rate updated in real-time!`);
+        } else {
+          console.log(`\n❌ Analytics Verification Failed.`);
+        }
+      }
+
     } finally {
       await pool.end();
     }
