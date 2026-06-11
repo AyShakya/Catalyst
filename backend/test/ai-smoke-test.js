@@ -136,6 +136,45 @@ async function runTest() {
       console.log(`❌ Update Failed`);
     }
 
+    // --- TEST EXECUTION (FREEZING) ---
+    console.log(`\n--- Campaign Execution Test (Phase 1) ---`);
+    console.log(`Endpoint: ${BACKEND_URL}/api/campaigns/${campaign.id}/execute\n`);
+
+    const executeResponse = await fetch(`${BACKEND_URL}/api/campaigns/${campaign.id}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    const executeResult = await executeResponse.json();
+
+    if (!executeResponse.ok) {
+      console.error(`\n❌ Execution Error (${executeResponse.status}):`, JSON.stringify(executeResult, null, 2));
+      process.exit(1);
+    }
+
+    console.log(`✅ Execution Started! Status: ${executeResult.data.status}`);
+
+    // Verify Database
+    const pool = new pg.Pool({ connectionString: DATABASE_URL });
+    try {
+      const audienceCount = await pool.query("SELECT COUNT(*) FROM campaign_audience WHERE campaign_id = $1", [campaign.id]);
+      const commsCount = await pool.query("SELECT COUNT(*) FROM communications WHERE campaign_id = $1", [campaign.id]);
+      
+      console.log(`\n--- Backend Verification (Post-Execution) ---`);
+      console.log(`Frozen Audience Count: ${audienceCount.rows[0].count}`);
+      console.log(`Pending Communications: ${commsCount.rows[0].count}`);
+
+      if (parseInt(audienceCount.rows[0].count) > 0 && audienceCount.rows[0].count === commsCount.rows[0].count) {
+        console.log(`\n✅ Execution Phase 1 Success: Audience frozen and tasks mapped.`);
+      } else if (campaign.audience_size === 0) {
+        console.log(`\n⚠️ Note: Audience size was 0, so 0 records is correct.`);
+      } else {
+        console.log(`\n❌ Execution Verification Failed: Mismatch between audience and communications.`);
+      }
+    } finally {
+      await pool.end();
+    }
+
     console.log(`\n----------------------------------------\n`);
 
   } catch (error) {
