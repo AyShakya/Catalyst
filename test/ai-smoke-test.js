@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 const path = require("path");
 const pg = require("pg");
 
-dotenv.config({ path: path.join(__dirname, "..", ".env") });
+dotenv.config({ path: path.join(__dirname, "..", "backend", ".env") });
 
 const BACKEND_URL = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
 const DATABASE_URL = process.env.DATABASE_URL;

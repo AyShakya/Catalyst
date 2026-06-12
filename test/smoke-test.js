@@ -6,7 +6,7 @@ const { spawn } = require("child_process");
 const dotenv = require("dotenv");
 const pg = require("pg");
 
-dotenv.config({ path: path.join(__dirname, "..", ".env") });
+dotenv.config({ path: path.join(__dirname, "..", "backend", ".env") });
 
 const BACKEND_URL = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -47,9 +47,9 @@ async function startBackendIfNeeded() {
     return false;
   }
 
-  const serverPath = path.join(__dirname, "..", "src", "server.js");
+  const serverPath = path.join(__dirname, "..", "backend", "src", "server.js");
   backendProcess = spawn(process.execPath, [serverPath], {
-    cwd: path.join(__dirname, ".."),
+    cwd: path.join(__dirname, "..", "backend"),
     stdio: ["ignore", "inherit", "inherit"],
     env: process.env,
   });

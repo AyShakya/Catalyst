@@ -29,3 +29,4 @@ env.local
 .env.development.local
 .env.test.local
 .env.production.local           
+Channel_Service/channel_service.db
