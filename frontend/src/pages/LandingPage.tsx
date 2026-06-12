@@ -1,14 +1,18 @@
 import React from 'react';
 import Hero from '../components/landing/Hero';
+import ProductFlow from '../components/landing/ProductFlow';
+import DemoVideo from '../components/landing/DemoVideo';
+import Features from '../components/landing/Features';
+import Footer from '../components/landing/Footer';
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="landing-page">
+    <div className="landing-page bg-background">
       <Hero />
-      {/* Product Flow Section will go here */}
-      {/* Demo Video Section will go here */}
-      {/* How Catalyst Works Section will go here */}
-      {/* Footer will go here */}
+      <ProductFlow />
+      <DemoVideo />
+      <Features />
+      <Footer />
     </div>
   );
 };

@@ -277,4 +277,19 @@ async function getCampaign(req, res) {
   }
 }
 
-module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics };
+async function listCampaigns(req, res) {
+  try {
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: "brand_id query param is required" });
+
+    const result = await query("SELECT * FROM campaigns WHERE brand_id = $1 ORDER BY created_at DESC", [brand_id]);
+    res.json({
+      status: "success",
+      data: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics, listCampaigns };
