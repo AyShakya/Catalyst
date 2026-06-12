@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
 import './styles/App.css';
 
 function App() {
@@ -6,7 +7,7 @@ function App() {
     <Router>
       <div className="app-container">
         <Routes>
-          <Route path="/" element={<div>Landing Page</div>} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/setup" element={<div>Brand Setup</div>} />
           <Route path="/workspace" element={<div>Workspace Overview</div>} />
           <Route path="/workspace/strategist" element={<div>AI Strategist</div>} />
