@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/layout/Navbar';
 import LandingPage from './pages/LandingPage';
 import BrandSetupPage from './pages/BrandSetupPage';
 import WorkspaceLayout from './components/layout/WorkspaceLayout';
@@ -13,6 +14,7 @@ function App() {
   return (
     <Router>
       <div className="app-container">
+        <Navbar />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/setup" element={<BrandSetupPage />} />
