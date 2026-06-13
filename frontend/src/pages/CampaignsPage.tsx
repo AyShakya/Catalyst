@@ -94,7 +94,7 @@ const CampaignsPage: React.FC = () => {
                 </div>
               </div>
 
-              <h3 className="text-lg font-black uppercase tracking-tight mb-2 group-hover:text-accent transition-colors">{campaign.name}</h3>
+              <h3 className="text-lg font-black uppercase tracking-tight mb-2 group-hover:text-accent transition-colors">{campaign.campaign_name || campaign.name}</h3>
               <p className="text-xs text-secondary font-medium line-clamp-2 mb-6">
                 {campaign.reasoning || "AI-architected re-engagement strategy."}
               </p>
@@ -102,12 +102,12 @@ const CampaignsPage: React.FC = () => {
               <div className="space-y-4 pt-6 border-t border-border">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-secondary">
                   <span>Progress</span>
-                  <span>{Math.round((campaign.delivered / (campaign.audience_size || 1)) * 100)}%</span>
+                  <span>{Math.round(((campaign.total_delivered || campaign.forecast_delivered || 0) / (campaign.audience_size || 1)) * 100)}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-card-bg rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-accent transition-all duration-1000" 
-                    style={{ width: `${Math.min(100, (campaign.delivered / (campaign.audience_size || 1)) * 100)}%` }} 
+                    style={{ width: `${Math.min(100, ((campaign.total_delivered || campaign.forecast_delivered || 0) / (campaign.audience_size || 1)) * 100)}%` }} 
                   />
                 </div>
 
@@ -118,7 +118,7 @@ const CampaignsPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-[10px] font-black text-secondary uppercase block mb-1">Conversions</span>
-                    <span className="text-sm font-black text-success">{campaign.conversions || 0}</span>
+                    <span className="text-sm font-black text-success">{campaign.total_conversions || campaign.forecast_purchased || 0}</span>
                   </div>
                 </div>
               </div>
