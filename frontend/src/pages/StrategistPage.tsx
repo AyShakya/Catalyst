@@ -7,7 +7,7 @@ import {
   ChevronRight, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { chatWithStrategist, launchStrategistCampaign, getStrategistSession, executeCampaign } from '../services/brandService';
+import { chatWithStrategist, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
 
 type Message = {
   role: 'USER' | 'ASSISTANT';
@@ -47,6 +47,7 @@ const StrategistPage: React.FC = () => {
   const [status, setStatus] = useState<'ACTIVE' | 'LAUNCHED'>('ACTIVE');
   const [isLoading, setIsLoading] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +63,8 @@ const StrategistPage: React.FC = () => {
     const sid = urlParams.get('session');
     if (sid) {
       loadSession(sid);
+    } else {
+      fetchActiveSessions(brandId);
     }
 
     // Handle prompt from Opportunity Feed
@@ -77,6 +80,17 @@ const StrategistPage: React.FC = () => {
     }
   }, [messages]);
 
+  const fetchActiveSessions = async (brandId: string) => {
+    try {
+      const res = await getActiveSessions(brandId);
+      if (res.status === 'success') {
+        setActiveSessions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load active sessions:", err);
+    }
+  };
+
   const loadSession = async (sid: string) => {
     try {
       setIsLoading(true);
@@ -91,6 +105,22 @@ const StrategistPage: React.FC = () => {
       console.error("Failed to load session:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCloseSession = async () => {
+    if (!sessionId) return;
+    try {
+      await closeSession(sessionId);
+      setSessionId(null);
+      setMessages([]);
+      setLatestDraft(null);
+      setStatus('ACTIVE');
+      window.history.replaceState(null, '', window.location.pathname);
+      const brandId = localStorage.getItem('catalyst_brand_id');
+      if (brandId) fetchActiveSessions(brandId);
+    } catch (err) {
+      console.error("Failed to close session:", err);
     }
   };
 
@@ -154,7 +184,7 @@ const StrategistPage: React.FC = () => {
   return (
     <div className="h-[calc(100vh-120px)] flex gap-8">
       {/* Left Chat Section */}
-      <div className="flex-1 flex flex-col bg-white rounded-[32px] border border-border shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white rounded-[32px] border border-border shadow-sm overflow-hidden relative">
         <div className="p-6 border-b border-border flex justify-between items-center bg-card-bg/30">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-accent text-white rounded-xl shadow-lg shadow-accent/20">
@@ -170,20 +200,62 @@ const StrategistPage: React.FC = () => {
               </div>
             </div>
           </div>
-          {sessionId && (
-            <div className="flex items-center gap-2 text-[10px] font-black text-secondary uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-border">
-              <History size={12} /> Version {latestDraft?.version || 1}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {sessionId && status !== 'LAUNCHED' && (
+              <button 
+                onClick={handleCloseSession}
+                className="flex items-center gap-1.5 text-[10px] font-black text-error uppercase tracking-widest bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Trash2 size={12} /> Discard
+              </button>
+            )}
+            {sessionId && (
+              <div className="flex items-center gap-2 text-[10px] font-black text-secondary uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-border">
+                <History size={12} /> Version {latestDraft?.version || 1}
+              </div>
+            )}
+          </div>
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6">
           <AnimatePresence initial={false}>
+            {!sessionId && activeSessions.length > 0 && messages.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
+              >
+                <h3 className="text-xs font-black uppercase tracking-widest text-secondary mb-4 flex items-center gap-2">
+                  <History size={14} /> Resume Active Sessions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeSessions.map(session => (
+                    <button 
+                      key={session.id}
+                      onClick={() => {
+                        window.history.replaceState(null, '', `?session=${session.id}`);
+                        loadSession(session.id);
+                      }}
+                      className="text-left p-4 rounded-2xl border border-border hover:border-accent bg-card-bg transition-all group"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black truncate max-w-[80%]">{session.latestDraft?.name || "Untitled Strategy"}</span>
+                        <ArrowRight size={14} className="text-secondary group-hover:text-accent" />
+                      </div>
+                      <p className="text-[10px] text-secondary font-medium uppercase tracking-widest">
+                        Updated {new Date(session.updated_at).toLocaleDateString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {messages.length === 0 && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto"
+                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-8"
               >
                 <div className="w-20 h-20 bg-accent/5 rounded-full flex items-center justify-center mb-8">
                   <Sparkles className="text-accent w-10 h-10" />
@@ -205,6 +277,7 @@ const StrategistPage: React.FC = () => {
                 </div>
               </motion.div>
             )}
+
             
             {messages.map((msg, i) => (
               <motion.div

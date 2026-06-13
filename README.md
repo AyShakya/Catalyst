@@ -13,6 +13,7 @@ Work -
 10. Dealing with nosense and meaningul messages like "hi, hello" etc with proper response.
 11. Dealing with redundant and useless api endpoints.
 12. Multiple parallel campaign processing.
+13. Mis click deleting campaign, or cancelling it mid way.
 
 
 - The campagin drafts are created, how about we show them in succession for user to analyse and see it for themselves, connected to each campaign.

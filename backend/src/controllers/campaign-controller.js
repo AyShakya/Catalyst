@@ -8,6 +8,11 @@ const campaignIntelligenceService = require("../services/intelligence/campaign-i
 /**
  * Creates a campaign proposal using AI Pass 2.
  */
+/**
+ * LEGACY V1 CODE - DEPRECATED
+ * Proposes a campaign using the old linear 2-pass AI Strategist.
+ * Replaced by the Continuous Strategist Chat flow in V2.
+ */
 async function proposeCampaign(req, res) {
   try {
     const { brand_id: brandId, goal, audience_preview: audiencePreview, filter_plan: filterPlan } = req.body;
@@ -296,4 +301,35 @@ async function listCampaigns(req, res) {
   }
 }
 
-module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics, listCampaigns };
+async function getCampaignMilestones(req, res) {
+  try {
+    const { id } = req.params;
+    // We can require strategistChatService here, or move logic to campaign service.
+    // For simplicity, we can fetch from DB directly here or require the strategist service.
+    const { query } = require("../config/db");
+    
+    const campaignRes = await query("SELECT session_id FROM campaigns WHERE id = $1", [id]);
+    if (campaignRes.rows.length === 0 || !campaignRes.rows[0].session_id) {
+      return res.json({ status: "success", data: [] });
+    }
+
+    const sessionId = campaignRes.rows[0].session_id;
+    const draftsRes = await query(
+      `SELECT version, draft_json, change_summary, created_at 
+       FROM campaign_drafts 
+       WHERE session_id = $1 AND is_milestone = TRUE 
+       ORDER BY version ASC`,
+      [sessionId]
+    );
+
+    res.json({
+      status: "success",
+      data: draftsRes.rows
+    });
+  } catch (error) {
+    console.error("Error in getCampaignMilestones:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics, listCampaigns, getCampaignMilestones };

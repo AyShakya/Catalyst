@@ -1,3 +1,12 @@
+/**
+ * LEGACY V1 CODE - DEPRECATED
+ * 
+ * This file contains the original linear 2-pass AI Strategist logic.
+ * It is no longer used in the V2 Continuous Chat loop.
+ * Retained temporarily for backward compatibility or reference.
+ * Do not import or use these functions in new V2 features.
+ */
+
 const { validateFilterPlan } = require("./filter-validator");
 const aiService = require("../ai/ai-service");
 

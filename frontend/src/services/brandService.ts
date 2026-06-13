@@ -42,6 +42,11 @@ export const getCampaignMetrics = async (campaignId: string) => {
   return response.data;
 };
 
+export const getCampaignMilestones = async (campaignId: string) => {
+  const response = await axios.get(`${API_URL}/campaigns/${campaignId}/milestones`);
+  return response.data;
+};
+
 // V2 Intelligence Layer
 export const getOpportunityFeed = async (brandId: string) => {
   const response = await axios.get(`${API_URL}/intelligence/${brandId}/opportunities`);
@@ -60,6 +65,16 @@ export const chatWithStrategist = async (brandId: string, message: string, sessi
 
 export const getStrategistSession = async (sessionId: string) => {
   const response = await axios.get(`${API_URL}/intelligence/strategist/session/${sessionId}`);
+  return response.data;
+};
+
+export const getActiveSessions = async (brandId: string) => {
+  const response = await axios.get(`${API_URL}/intelligence/${brandId}/strategist/sessions`);
+  return response.data;
+};
+
+export const closeSession = async (sessionId: string) => {
+  const response = await axios.delete(`${API_URL}/intelligence/strategist/session/${sessionId}`);
   return response.data;
 };
 

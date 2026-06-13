@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   forecast_opened INTEGER,
   forecast_clicked INTEGER,
   forecast_purchased INTEGER,
+  session_id UUID REFERENCES strategist_sessions(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -170,6 +171,12 @@ VALUES
   ('days_since_last_purchase', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
   ('loyalty_score', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
   ('churn_score', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('highest_order_value', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('lowest_order_value', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('first_purchase_date', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('last_purchase_date', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('customer_lifetime_value', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
+  ('avg_days_between_orders', 'number', ARRAY['>', '<', '=', '>=', '<=', '!='], FALSE),
   ('city', 'string', ARRAY['=', '!=', 'IN'], TRUE),
   ('state', 'string', ARRAY['=', '!=', 'IN'], TRUE),
   ('country', 'string', ARRAY['=', '!=', 'IN'], TRUE)
@@ -266,6 +273,7 @@ CREATE TABLE IF NOT EXISTS campaign_drafts (
   version INTEGER NOT NULL DEFAULT 1,
   draft_json JSONB NOT NULL,
   change_summary TEXT,
+  is_milestone BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

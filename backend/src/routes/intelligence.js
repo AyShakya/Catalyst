@@ -30,6 +30,18 @@ router.post("/:brandId/strategist/chat", strategistController.chatWithStrategist
 router.get("/strategist/session/:sessionId", strategistController.getStrategistSession);
 
 /**
+ * @route   GET /api/intelligence/:brandId/strategist/sessions
+ * @desc    Retrieves all active sessions for a given brand.
+ */
+router.get("/:brandId/strategist/sessions", strategistController.getActiveSessions);
+
+/**
+ * @route   DELETE /api/intelligence/strategist/session/:sessionId
+ * @desc    Closes/rejects an active session.
+ */
+router.delete("/strategist/session/:sessionId", strategistController.closeSession);
+
+/**
  * @route   POST /api/intelligence/:brandId/strategist/launch
  * @desc    Converts the latest strategist draft into a formal campaign and locks the session.
  */

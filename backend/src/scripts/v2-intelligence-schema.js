@@ -61,6 +61,7 @@ async function up() {
         version INTEGER NOT NULL DEFAULT 1,
         draft_json JSONB NOT NULL,
         change_summary TEXT,
+        is_milestone BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);

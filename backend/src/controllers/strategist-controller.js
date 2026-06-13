@@ -119,8 +119,43 @@ async function launchStrategistCampaign(req, res) {
   }
 }
 
+async function getActiveSessions(req, res) {
+  try {
+    const { brandId } = req.params;
+    const sessions = await strategistChatService.getActiveSessions(brandId);
+    
+    const formattedSessions = sessions.map(s => ({
+      id: s.id,
+      created_at: s.created_at,
+      updated_at: s.updated_at,
+      latestDraft: StrategistResponseFormatter.formatDraft(s.draft_json, s.version)
+    }));
+
+    res.json({
+      status: "success",
+      data: formattedSessions
+    });
+  } catch (error) {
+    console.error("Error in getActiveSessions:", error);
+    res.status(500).json({ error: "Failed to fetch active sessions" });
+  }
+}
+
+async function closeSession(req, res) {
+  try {
+    const { sessionId } = req.params;
+    await strategistChatService.closeSession(sessionId);
+    res.json({ status: "success", message: "Session closed successfully" });
+  } catch (error) {
+    console.error("Error in closeSession:", error.message);
+    res.status(400).json({ error: error.message || "Failed to close session" });
+  }
+}
+
 module.exports = {
   chatWithStrategist,
   getStrategistSession,
-  launchStrategistCampaign
+  launchStrategistCampaign,
+  getActiveSessions,
+  closeSession
 };
