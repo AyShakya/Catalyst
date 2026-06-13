@@ -227,3 +227,58 @@ CREATE INDEX IF NOT EXISTS idx_communications_status ON communications (status);
 
 CREATE INDEX IF NOT EXISTS idx_communication_events_communication_id ON communication_events (communication_id);
 CREATE INDEX IF NOT EXISTS idx_communication_events_event_type ON communication_events (event_type);
+
+-- V2 Intelligence Layer
+
+CREATE TABLE IF NOT EXISTS business_insights (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  severity VARCHAR(20) NOT NULL CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
+  estimated_impact DECIMAL(14,2),
+  supporting_data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_business_insights_brand_id ON business_insights (brand_id);
+
+CREATE TABLE IF NOT EXISTS strategist_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'LAUNCHED')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS strategist_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES strategist_sessions(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('USER', 'ASSISTANT', 'SYSTEM')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS campaign_drafts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES strategist_sessions(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL DEFAULT 1,
+  draft_json JSONB NOT NULL,
+  change_summary TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS campaign_intelligence_summaries (
+  brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  goal VARCHAR(255) NOT NULL,
+  campaign_count INTEGER NOT NULL DEFAULT 0,
+  best_channel VARCHAR(50),
+  avg_ctr DECIMAL(8,4),
+  avg_conversion_rate DECIMAL(8,4),
+  total_revenue DECIMAL(14,2),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (brand_id, goal)
+);
+
+CREATE INDEX IF NOT EXISTS idx_campaign_intel_brand_id ON campaign_intelligence_summaries (brand_id);

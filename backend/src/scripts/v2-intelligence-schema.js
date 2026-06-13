@@ -36,6 +36,7 @@ async function up() {
       CREATE TABLE IF NOT EXISTS strategist_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'LAUNCHED')),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
