@@ -79,6 +79,72 @@ async function chatWithStrategist(req, res) {
   }
 }
 
+async function chatWithStrategistStream(req, res) {
+  const { brandId } = req.params;
+  const { sessionId, message } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: "Message is required" });
+  }
+
+  res.status(200);
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  const sendEvent = (eventName, data) => {
+    res.write(`event: ${eventName}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const sendTextChunks = async (text) => {
+    const chunks = text.match(/\S+\s*/g) || [];
+
+    for (const chunk of chunks) {
+      sendEvent("delta", { delta: chunk });
+      await new Promise((resolve) => setTimeout(resolve, 18));
+    }
+  };
+
+  const closeHandler = () => {
+    if (!res.writableEnded) {
+      res.end();
+    }
+  };
+
+  req.on("close", closeHandler);
+
+  try {
+    const result = await strategistChatService.processMessage(brandId, sessionId, message);
+
+    await sendTextChunks(result.assistantMessage || "");
+
+    sendEvent("final", {
+      sessionId: result.sessionId,
+      version: result.version,
+      message: result.assistantMessage,
+      draft: StrategistResponseFormatter.formatDraft(result.draft),
+      history: result.history,
+    });
+
+    res.end();
+  } catch (error) {
+    if (!res.writableEnded) {
+      sendEvent("error", {
+        error: error.message || "Strategist streaming failed",
+      });
+      res.end();
+    }
+  } finally {
+    req.off("close", closeHandler);
+  }
+}
+
 async function getStrategistSession(req, res) {
   try {
     const { sessionId } = req.params;
@@ -154,6 +220,7 @@ async function closeSession(req, res) {
 
 module.exports = {
   chatWithStrategist,
+  chatWithStrategistStream,
   getStrategistSession,
   launchStrategistCampaign,
   getActiveSessions,

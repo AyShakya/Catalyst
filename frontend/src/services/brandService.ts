@@ -63,6 +63,109 @@ export const chatWithStrategist = async (brandId: string, message: string, sessi
   return response.data;
 };
 
+type StrategistStreamHandlers = {
+  onDelta?: (delta: string) => void;
+  onFinal?: (payload: any) => void;
+  onError?: (error: string) => void;
+};
+
+export const chatWithStrategistStream = async (
+  brandId: string,
+  message: string,
+  sessionId: string | undefined,
+  handlers: StrategistStreamHandlers = {}
+) => {
+  const response = await fetch(`${API_URL}/intelligence/${brandId}/strategist/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify({ message, sessionId }),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Streaming failed with status ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalPayload: any = null;
+
+  const emitEvent = (eventName: string, data: string) => {
+    if (eventName === 'delta') {
+      try {
+        const parsed = JSON.parse(data);
+        if (typeof parsed.delta === 'string') {
+          handlers.onDelta?.(parsed.delta);
+        }
+      } catch {
+        // Ignore malformed delta frames and keep streaming.
+      }
+      return;
+    }
+
+    if (eventName === 'final') {
+      try {
+        finalPayload = JSON.parse(data);
+        handlers.onFinal?.(finalPayload);
+      } catch {
+        // If the final frame is malformed, the caller can fall back.
+      }
+      return;
+    }
+
+    if (eventName === 'error') {
+      try {
+        const parsed = JSON.parse(data);
+        handlers.onError?.(parsed.error || 'Strategist streaming failed');
+      } catch {
+        handlers.onError?.('Strategist streaming failed');
+      }
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let frameEnd = buffer.indexOf('\n\n');
+    while (frameEnd !== -1) {
+      const frame = buffer.slice(0, frameEnd);
+      buffer = buffer.slice(frameEnd + 2);
+
+      const lines = frame.split(/\r?\n/);
+      let eventName = 'message';
+      const dataLines: string[] = [];
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim();
+          continue;
+        }
+
+        if (line.startsWith('data:')) {
+          dataLines.push(line.slice(5).trimStart());
+        }
+      }
+
+      const data = dataLines.join('\n');
+      if (data) {
+        emitEvent(eventName, data);
+      }
+
+      frameEnd = buffer.indexOf('\n\n');
+    }
+  }
+
+  return finalPayload;
+};
+
 export const getStrategistSession = async (sessionId: string) => {
   const response = await axios.get(`${API_URL}/intelligence/strategist/session/${sessionId}`);
   return response.data;

@@ -16,6 +16,8 @@ router.get("/:brandId/opportunities", intelligenceController.getOpportunityFeed)
  */
 router.get("/:brandId/executive-brief", intelligenceController.getExecutiveBrief);
 
+router.post("/:brandId/strategist/chat/stream", strategistController.chatWithStrategistStream);
+
 /**
  * @route   POST /api/intelligence/:brandId/strategist/chat
  * @desc    Interactive chat with the AI Marketing Strategist. 

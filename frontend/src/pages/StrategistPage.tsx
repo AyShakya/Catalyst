@@ -7,7 +7,7 @@ import {
   ChevronRight, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { chatWithStrategist, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
+import { chatWithStrategist, chatWithStrategistStream, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
 
 type Message = {
   role: 'USER' | 'ASSISTANT';
@@ -48,6 +48,7 @@ const StrategistPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const streamingAssistantIndexRef = useRef<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -134,16 +135,94 @@ const StrategistPage: React.FC = () => {
 
     // Optimistic UI
     setMessages(prev => [...prev, { role: 'USER', content: userMsg }]);
+    streamingAssistantIndexRef.current = null;
 
     try {
-      const res = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
-      if (res.status === 'success') {
-        if (!sessionId) {
-          setSessionId(res.data.sessionId);
-          window.history.replaceState(null, '', `?session=${res.data.sessionId}`);
+      let streamedFinal: any = null;
+
+      setMessages(prev => {
+        const next = [...prev, { role: 'ASSISTANT', content: '' }];
+        streamingAssistantIndexRef.current = next.length - 1;
+        return next;
+      });
+
+      try {
+        streamedFinal = await chatWithStrategistStream(brandId, userMsg, sessionId || undefined, {
+          onDelta: (delta) => {
+            setMessages(prev => {
+              const index = streamingAssistantIndexRef.current;
+              if (index === null || index < 0 || index >= prev.length) {
+                return prev;
+              }
+
+              const next = [...prev];
+              const current = next[index];
+
+              if (!current || current.role !== 'ASSISTANT') {
+                return prev;
+              }
+
+              next[index] = {
+                ...current,
+                content: `${current.content}${delta}`,
+              };
+
+              return next;
+            });
+          },
+          onError: (errorMessage) => {
+            throw new Error(errorMessage);
+          },
+        });
+      } catch (streamError) {
+        const fallbackRes = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
+        if (fallbackRes.status === 'success') {
+          if (!sessionId) {
+            setSessionId(fallbackRes.data.sessionId);
+            window.history.replaceState(null, '', `?session=${fallbackRes.data.sessionId}`);
+          }
+          setMessages(fallbackRes.data.history);
+          setLatestDraft(fallbackRes.data.draft);
+          return;
         }
-        setMessages(res.data.history);
-        setLatestDraft(res.data.draft);
+
+        throw streamError;
+      }
+
+      if (streamedFinal && (typeof streamedFinal.message === 'string' || Array.isArray(streamedFinal.history))) {
+        if (!sessionId && streamedFinal.sessionId) {
+          setSessionId(streamedFinal.sessionId);
+          window.history.replaceState(null, '', `?session=${streamedFinal.sessionId}`);
+        }
+
+        if (Array.isArray(streamedFinal.history) && streamedFinal.history.length > 0) {
+          setMessages(streamedFinal.history);
+        } else if (typeof streamedFinal.message === 'string') {
+          setMessages(prev => {
+            const index = streamingAssistantIndexRef.current;
+            if (index === null || index < 0 || index >= prev.length) {
+              return prev;
+            }
+
+            const next = [...prev];
+            next[index] = { ...next[index], content: streamedFinal.message };
+            return next;
+          });
+        }
+
+        if (streamedFinal.draft) {
+          setLatestDraft(streamedFinal.draft);
+        }
+      } else {
+        const res = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
+        if (res.status === 'success') {
+          if (!sessionId) {
+            setSessionId(res.data.sessionId);
+            window.history.replaceState(null, '', `?session=${res.data.sessionId}`);
+          }
+          setMessages(res.data.history);
+          setLatestDraft(res.data.draft);
+        }
       }
     } catch (err) {
       console.error(err);
