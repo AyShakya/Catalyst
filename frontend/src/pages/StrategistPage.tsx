@@ -7,7 +7,7 @@ import {
   ChevronRight, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { chatWithStrategist, launchStrategistCampaign, getStrategistSession } from '../services/brandService';
+import { chatWithStrategist, launchStrategistCampaign, getStrategistSession, executeCampaign } from '../services/brandService';
 
 type Message = {
   role: 'USER' | 'ASSISTANT';
@@ -132,8 +132,9 @@ const StrategistPage: React.FC = () => {
     try {
       const res = await launchStrategistCampaign(brandId, sessionId);
       if (res.status === 'success') {
+        // Trigger actual execution (PII snapshot + dispatch)
+        await executeCampaign(res.data.campaignId);
         setStatus('LAUNCHED');
-        // Optional: show a success animation or redirect
       }
     } catch (err) {
       console.error(err);
