@@ -134,14 +134,14 @@ const StrategistPage: React.FC = () => {
     setIsLoading(true);
 
     // Optimistic UI
-    setMessages(prev => [...prev, { role: 'USER', content: userMsg }]);
+    setMessages(prev => [...prev, { role: 'USER', content: userMsg } as Message]);
     streamingAssistantIndexRef.current = null;
 
     try {
       let streamedFinal: any = null;
 
       setMessages(prev => {
-        const next = [...prev, { role: 'ASSISTANT', content: '' }];
+        const next = [...prev, { role: 'ASSISTANT', content: '' } as Message];
         streamingAssistantIndexRef.current = next.length - 1;
         return next;
       });
@@ -226,7 +226,7 @@ const StrategistPage: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'ASSISTANT', content: "I encountered an error while analyzing your request. Please try again." }]);
+      setMessages(prev => [...prev, { role: 'ASSISTANT', content: "I encountered an error while analyzing your request. Please try again." } as Message]);
     } finally {
       setIsLoading(false);
     }
@@ -263,7 +263,7 @@ const StrategistPage: React.FC = () => {
   return (
     <div className="h-[calc(100vh-120px)] flex gap-8">
       {/* Left Chat Section */}
-      <div className="flex-1 flex flex-col bg-white rounded-[32px] border border-border shadow-sm overflow-hidden relative">
+      <div className="flex-1 flex flex-col bg-white rounded-4xl border border-border shadow-sm overflow-hidden relative">
         <div className="p-6 border-b border-border flex justify-between items-center bg-card-bg/30">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-accent text-white rounded-xl shadow-lg shadow-accent/20">
@@ -348,7 +348,7 @@ const StrategistPage: React.FC = () => {
                     <button 
                       key={i}
                       onClick={() => setInput(p)}
-                      className="text-left px-5 py-3 rounded-xl border border-border hover:border-accent hover:bg-accent/[0.02] transition-all text-xs font-bold text-secondary flex justify-between items-center group"
+                      className="text-left px-5 py-3 rounded-xl border border-border hover:border-accent hover:bg-accent/2 transition-all text-xs font-bold text-secondary flex justify-between items-center group"
                     >
                       {p} <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
@@ -366,7 +366,7 @@ const StrategistPage: React.FC = () => {
                 className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`max-w-[80%] flex gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                     msg.role === 'USER' ? 'bg-card-bg border border-border text-secondary' : 'bg-accent text-white'
                   }`}>
                     {msg.role === 'USER' ? <User size={16} /> : <Bot size={16} />}
@@ -423,7 +423,7 @@ const StrategistPage: React.FC = () => {
       </div>
 
       {/* Right Strategy Snapshot */}
-      <div className="w-[400px] flex flex-col gap-6 h-full">
+      <div className="w-100 flex flex-col gap-6 h-full">
         <AnimatePresence mode="wait">
           {latestDraft ? (
             <motion.div 
@@ -434,7 +434,7 @@ const StrategistPage: React.FC = () => {
               className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2"
             >
               {/* Audience Section */}
-              <div className="bg-white p-6 rounded-[32px] border border-border shadow-sm">
+              <div className="bg-white p-6 rounded-4xl border border-border shadow-sm">
                 <div className="flex items-center gap-2 mb-6">
                   <Users size={18} className="text-accent" />
                   <h3 className="text-xs font-black uppercase tracking-widest">Audience Discovery</h3>
@@ -458,7 +458,7 @@ const StrategistPage: React.FC = () => {
               </div>
 
               {/* Strategy Card */}
-              <div className="bg-white p-6 rounded-[32px] border border-border shadow-sm flex-1">
+              <div className="bg-white p-6 rounded-4xl border border-border shadow-sm flex-1">
                 <div className="flex items-center gap-2 mb-6">
                   <Target size={18} className="text-accent" />
                   <h3 className="text-xs font-black uppercase tracking-widest">Campaign Strategy</h3>
@@ -491,7 +491,7 @@ const StrategistPage: React.FC = () => {
               </div>
 
               {/* Action Section */}
-              <div className="bg-foreground text-white p-6 rounded-[32px] shadow-xl relative overflow-hidden">
+              <div className="bg-foreground text-white p-6 rounded-4xl shadow-xl relative overflow-hidden">
                 <BarChart3 className="absolute -bottom-4 -right-4 w-20 h-20 opacity-10" />
                 <h3 className="text-xs font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
                 <div className="flex justify-between items-end mb-8">
@@ -521,7 +521,7 @@ const StrategistPage: React.FC = () => {
               key="placeholder"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex-1 border-2 border-dashed border-border rounded-[32px] flex flex-col items-center justify-center p-8 text-center"
+              className="flex-1 border-2 border-dashed border-border rounded-4xl flex flex-col items-center justify-center p-8 text-center"
             >
               <div className="w-12 h-12 bg-card-bg rounded-full flex items-center justify-center mb-4 text-secondary/30">
                 <Target size={24} />
