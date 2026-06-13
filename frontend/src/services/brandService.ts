@@ -19,7 +19,7 @@ export const getBrandAnalytics = async (brandId: string) => {
 };
 
 export const uploadData = async (brandId: string, customerCsv?: string, orderCsv?: string) => {
-  const response = await axios.post(`${API_URL}/upload/upload`, {
+  const response = await axios.post(`${API_URL}/upload`, {
     brand_id: brandId,
     customer_csv: customerCsv,
     order_csv: orderCsv,

@@ -7,7 +7,7 @@ const { regenerateMetrics } = require("../services/analytics/metrics-generator")
 
 const router = express.Router();
 
-router.post("/upload", async (req, res) => {
+router.post("/", async (req, res) => {
   let client;
 
   try {

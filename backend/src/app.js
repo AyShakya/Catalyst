@@ -38,7 +38,7 @@ app.get("/health", (req, res) => {
 	res.json({ status: "ok" });
 });
 
-app.use("/api", uploadRoutes);
+app.use("/api/upload", uploadRoutes);
 app.use("/api/metrics", metricsRoutes);
 app.use("/api/audience", audienceRoutes);
 app.use("/api/campaigns", campaignRoutes);
