@@ -5,8 +5,10 @@ const { generateMetricDistributions } = require("./metric-distributions");
 const { seedMetricRegistry } = require("./metric-registry");
 const { seedSegmentRegistry } = require("./segment-registry");
 const opportunityFeedService = require("../intelligence/opportunity-feed");
+const campaignIntelligenceService = require("../intelligence/campaign-intelligence");
 
 async function regenerateMetrics(brandId, db = { query }) {
+
   let jobId;
 
   try {

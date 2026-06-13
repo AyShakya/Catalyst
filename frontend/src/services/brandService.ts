@@ -14,7 +14,7 @@ export const createBrand = async (name: string, industry?: string): Promise<Bran
 };
 
 export const getBrandAnalytics = async (brandId: string) => {
-  const response = await axios.get(`${API_URL}/brands/${brandId}/analytics`);
+  const response = await axios.get(`${API_URL}/metrics/${brandId}`);
   return response.data;
 };
 
@@ -37,12 +37,38 @@ export const getCampaignDetails = async (campaignId: string) => {
   return response.data;
 };
 
-export const createCampaignProposal = async (brandId: string, prompt: string) => {
-  const response = await axios.post(`${API_URL}/campaigns/propose`, { brand_id: brandId, prompt });
+export const getCampaignMetrics = async (campaignId: string) => {
+  const response = await axios.get(`${API_URL}/campaigns/${campaignId}/metrics`);
   return response.data;
 };
 
-export const launchCampaign = async (campaignId: string) => {
+// V2 Intelligence Layer
+export const getOpportunityFeed = async (brandId: string) => {
+  const response = await axios.get(`${API_URL}/intelligence/${brandId}/opportunities`);
+  return response.data;
+};
+
+export const getExecutiveBrief = async (brandId: string) => {
+  const response = await axios.get(`${API_URL}/intelligence/${brandId}/executive-brief`);
+  return response.data;
+};
+
+export const chatWithStrategist = async (brandId: string, message: string, sessionId?: string) => {
+  const response = await axios.post(`${API_URL}/intelligence/${brandId}/strategist/chat`, { message, sessionId });
+  return response.data;
+};
+
+export const getStrategistSession = async (sessionId: string) => {
+  const response = await axios.get(`${API_URL}/intelligence/strategist/session/${sessionId}`);
+  return response.data;
+};
+
+export const launchStrategistCampaign = async (brandId: string, sessionId: string) => {
+  const response = await axios.post(`${API_URL}/intelligence/${brandId}/strategist/launch`, { sessionId });
+  return response.data;
+};
+
+export const executeCampaign = async (campaignId: string) => {
   const response = await axios.post(`${API_URL}/campaigns/${campaignId}/execute`);
   return response.data;
 };

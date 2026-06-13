@@ -1,338 +1,384 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, Send, Loader2, Target, Users, 
   MessageSquare, BarChart3, Rocket, Trash2, Edit3,
-  CheckCircle2, ArrowRight
+  CheckCircle2, ArrowRight, Bot, User, History,
+  ChevronRight, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createCampaignProposal, launchCampaign } from '../services/brandService';
+import { chatWithStrategist, launchStrategistCampaign, getStrategistSession } from '../services/brandService';
 
-type StrategistState = 'idle' | 'thinking' | 'proposal' | 'launched';
+type Message = {
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  timestamp?: string;
+};
+
+type Draft = {
+  version: number;
+  name: string;
+  goal: string;
+  channel: string;
+  message: string;
+  reasoning: string;
+  filters: any[];
+  audience: {
+    size: number;
+    avgSpend: number;
+    avgLoyalty: number;
+    avgChurn: number;
+  };
+  forecast: {
+    delivered: number;
+    opened: number;
+    clicked: number;
+    conversions: number;
+    revenue: number;
+  };
+};
 
 const StrategistPage: React.FC = () => {
   const navigate = useNavigate();
-  const [prompt, setPrompt] = useState('');
-  const [state, setState] = useState<StrategistState>('idle');
-  const [currentStep, setCurrentStep] = useState(0);
-  const [proposal, setProposal] = useState<any>(null);
+  const [input, setInput] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [latestDraft, setLatestDraft] = useState<Draft | null>(null);
+  const [status, setStatus] = useState<'ACTIVE' | 'LAUNCHED'>('ACTIVE');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const steps = [
-    "Analyzing Customer Base",
-    "Identifying Audience",
-    "Designing Campaign Strategy",
-    "Generating Forecast"
-  ];
-
-  const handlePropose = async () => {
-    if (!prompt) return;
+  useEffect(() => {
     const brandId = localStorage.getItem('catalyst_brand_id');
-    if (!brandId) return;
+    if (!brandId) {
+      navigate('/setup');
+      return;
+    }
 
-    setState('thinking');
-    setCurrentStep(0);
+    // Recover session from URL if provided (v2 support)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sid = urlParams.get('session');
+    if (sid) {
+      loadSession(sid);
+    }
 
-    // Simulation for UX
-    const interval = setInterval(() => {
-      setCurrentStep(prev => (prev < steps.length - 1 ? prev + 1 : prev));
-    }, 2000);
+    // Handle prompt from Opportunity Feed
+    const initialPrompt = urlParams.get('prompt');
+    if (initialPrompt) {
+      setInput(initialPrompt);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const loadSession = async (sid: string) => {
+    try {
+      setIsLoading(true);
+      const res = await getStrategistSession(sid);
+      if (res.status === 'success') {
+        setSessionId(sid);
+        setMessages(res.data.history);
+        setLatestDraft(res.data.latestDraft);
+        setStatus(res.data.status);
+      }
+    } catch (err) {
+      console.error("Failed to load session:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading || status === 'LAUNCHED') return;
+
+    const brandId = localStorage.getItem('catalyst_brand_id')!;
+    const userMsg = input.trim();
+    setInput('');
+    setIsLoading(true);
+
+    // Optimistic UI
+    setMessages(prev => [...prev, { role: 'USER', content: userMsg }]);
 
     try {
-      const res = await createCampaignProposal(brandId, prompt);
-      setProposal(res.data);
-      clearInterval(interval);
-      setCurrentStep(steps.length - 1);
-      setTimeout(() => setState('proposal'), 1000);
+      const res = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
+      if (res.status === 'success') {
+        if (!sessionId) {
+          setSessionId(res.data.sessionId);
+          window.history.replaceState(null, '', `?session=${res.data.sessionId}`);
+        }
+        setMessages(res.data.history);
+        setLatestDraft(res.data.draft);
+      }
     } catch (err) {
       console.error(err);
-      setState('idle');
-      clearInterval(interval);
+      setMessages(prev => [...prev, { role: 'ASSISTANT', content: "I encountered an error while analyzing your request. Please try again." }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLaunch = async () => {
-    if (!proposal) return;
+    if (!sessionId || isLaunching || status === 'LAUNCHED') return;
+
+    const brandId = localStorage.getItem('catalyst_brand_id')!;
+    setIsLaunching(true);
+
     try {
-      await launchCampaign(proposal.id);
-      setState('launched');
+      const res = await launchStrategistCampaign(brandId, sessionId);
+      if (res.status === 'success') {
+        setStatus('LAUNCHED');
+        // Optional: show a success animation or redirect
+      }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLaunching(false);
     }
   };
 
   const examplePrompts = [
     "Increase repeat purchases",
-    "Bring back inactive customers",
-    "Promote a new product launch",
-    "Improve customer retention",
-    "Reward high-value customers"
+    "Bring back inactive VIPs",
+    "Promote a new seasonal collection",
+    "Target high-churn risk customers in Mumbai",
+    "Reward our top 5% spenders"
   ];
 
-  if (state === 'thinking') {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center">
-        <div className="max-w-md w-full">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center mb-12"
-          >
-            <div className="relative inline-block">
-              <Sparkles className="w-16 h-16 text-accent animate-pulse" />
-              <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full -z-10" />
+  return (
+    <div className="h-[calc(100vh-120px)] flex gap-8">
+      {/* Left Chat Section */}
+      <div className="flex-1 flex flex-col bg-white rounded-[32px] border border-border shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-border flex justify-between items-center bg-card-bg/30">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-accent text-white rounded-xl shadow-lg shadow-accent/20">
+              <Bot size={20} />
             </div>
-            <h2 className="text-3xl font-black mt-6 uppercase tracking-tight">Strategizing...</h2>
-            <p className="text-secondary mt-2">Catalyst is architecting your growth strategy</p>
-          </motion.div>
-
-          <div className="space-y-4">
-            {steps.map((step, index) => (
-              <motion.div 
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ 
-                  opacity: index <= currentStep ? 1 : 0.2,
-                  x: 0,
-                }}
-                className={`flex items-center gap-4 p-5 rounded-2xl border transition-all duration-500 ${
-                  index === currentStep ? 'bg-white border-accent shadow-lg shadow-accent/5 translate-x-2' : 'bg-white/50 border-border'
-                }`}
-              >
-                {index < currentStep ? (
-                  <CheckCircle2 className="text-success" size={20} />
-                ) : index === currentStep ? (
-                  <Loader2 className="animate-spin text-accent" size={20} />
-                ) : (
-                  <div className="w-5 h-5 rounded-full border-2 border-border" />
-                )}
-                <span className={`font-black text-xs uppercase tracking-[0.15em] ${index === currentStep ? 'text-accent' : 'text-secondary'}`}>
-                  {step}
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-widest">AI Strategist</h2>
+              <div className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${status === 'LAUNCHED' ? 'bg-secondary' : 'bg-success animate-pulse'}`} />
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                  {status === 'LAUNCHED' ? 'Session Locked' : 'Online & Analyzing'}
                 </span>
+              </div>
+            </div>
+          </div>
+          {sessionId && (
+            <div className="flex items-center gap-2 text-[10px] font-black text-secondary uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-border">
+              <History size={12} /> Version {latestDraft?.version || 1}
+            </div>
+          )}
+        </div>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6">
+          <AnimatePresence initial={false}>
+            {messages.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto"
+              >
+                <div className="w-20 h-20 bg-accent/5 rounded-full flex items-center justify-center mb-8">
+                  <Sparkles className="text-accent w-10 h-10" />
+                </div>
+                <h3 className="text-3xl font-black uppercase tracking-tighter mb-4">Strategic Intelligence</h3>
+                <p className="text-secondary font-medium mb-12">
+                  Describe a business outcome, and I will architect the ideal audience and communication strategy for you.
+                </p>
+                <div className="grid grid-cols-1 gap-3 w-full">
+                  {examplePrompts.map((p, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => setInput(p)}
+                      className="text-left px-5 py-3 rounded-xl border border-border hover:border-accent hover:bg-accent/[0.02] transition-all text-xs font-bold text-secondary flex justify-between items-center group"
+                    >
+                      {p} <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+            
+            {messages.map((msg, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[80%] flex gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    msg.role === 'USER' ? 'bg-card-bg border border-border text-secondary' : 'bg-accent text-white'
+                  }`}>
+                    {msg.role === 'USER' ? <User size={16} /> : <Bot size={16} />}
+                  </div>
+                  <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'USER' ? 'bg-foreground text-white' : 'bg-card-bg border border-border text-foreground font-medium'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
               </motion.div>
             ))}
+
+            {isLoading && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
+                <div className="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center">
+                  <Bot size={16} />
+                </div>
+                <div className="bg-card-bg border border-border p-4 rounded-2xl flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
+                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
+                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">Strategist is thinking...</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="p-6 border-t border-border bg-card-bg/30">
+          <div className="relative">
+            <input 
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              disabled={isLoading || status === 'LAUNCHED'}
+              placeholder={status === 'LAUNCHED' ? "Session closed. Launching campaign..." : "Refine your strategy (e.g. 'Focus only on Mumbai customers')"}
+              className="w-full bg-white border border-border rounded-2xl px-6 py-4 pr-16 outline-none focus:border-accent transition-all font-medium text-sm disabled:opacity-50"
+            />
+            <button 
+              onClick={handleSendMessage}
+              disabled={!input.trim() || isLoading || status === 'LAUNCHED'}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+                input.trim() && !isLoading && status !== 'LAUNCHED' ? 'bg-accent text-white' : 'bg-border text-secondary'
+              }`}
+            >
+              <Send size={18} />
+            </button>
           </div>
         </div>
       </div>
-    );
-  }
 
-  if (state === 'proposal' && proposal) {
-    return (
-      <div className="space-y-8 pb-20">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[10px] font-black text-accent uppercase tracking-[0.3em] mb-2 block">Campaign Strategy</span>
-            <h1 className="text-4xl font-black uppercase tracking-tighter leading-none">{proposal.name}</h1>
-          </div>
-          <div className="flex gap-3">
-            <button 
-              onClick={() => setState('idle')}
-              className="px-6 py-3 rounded-xl border border-border font-black text-xs uppercase tracking-widest hover:bg-card-bg transition-all"
+      {/* Right Strategy Snapshot */}
+      <div className="w-[400px] flex flex-col gap-6 h-full">
+        <AnimatePresence mode="wait">
+          {latestDraft ? (
+            <motion.div 
+              key="draft"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2"
             >
-              Discard
-            </button>
-            <button 
-              onClick={handleLaunch}
-              className="px-6 py-3 rounded-xl bg-accent text-white font-black text-xs uppercase tracking-widest hover:bg-accent/90 transition-all shadow-lg shadow-accent/20 flex items-center gap-2"
-            >
-              Launch Strategy <Rocket size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            {/* Strategy Logic */}
-            <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-accent/10 text-accent rounded-lg">
-                  <Target size={20} />
+              {/* Audience Section */}
+              <div className="bg-white p-6 rounded-[32px] border border-border shadow-sm">
+                <div className="flex items-center gap-2 mb-6">
+                  <Users size={18} className="text-accent" />
+                  <h3 className="text-xs font-black uppercase tracking-widest">Audience Discovery</h3>
                 </div>
-                <h3 className="text-sm font-black uppercase tracking-widest">Business Intelligence</h3>
-              </div>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-widest block mb-2">Objective</label>
-                  <p className="text-lg font-bold">"{prompt}"</p>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-widest block mb-2">AI Reasoning</label>
-                  <p className="text-secondary leading-relaxed">
-                    Based on the customer behavior analysis, I've identified a segment that has high latent value but low recent activity. 
-                    This strategy focuses on re-engagement through personalized multi-channel communication to maximize conversion probability.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Message Creative */}
-            <div className="bg-card-bg p-8 rounded-3xl border border-border shadow-inner relative">
-              <div className="absolute top-8 right-8 text-accent opacity-20">
-                <MessageSquare size={48} />
-              </div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-white text-foreground rounded-lg shadow-sm">
-                  <MessageSquare size={20} />
-                </div>
-                <h3 className="text-sm font-black uppercase tracking-widest">Communication Protocol</h3>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-border">
-                <p className="text-sm font-medium leading-relaxed italic text-secondary">
-                  "{proposal.message_template}"
-                </p>
-              </div>
-              <div className="mt-6 flex gap-4">
-                <div className="bg-white px-3 py-2 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest">Channel: {proposal.channel}</div>
-                <div className="bg-white px-3 py-2 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest text-accent">AI-Optimized Timing</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-8">
-            {/* Audience Snapshot */}
-            <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-success/10 text-success rounded-lg">
-                  <Users size={20} />
-                </div>
-                <h3 className="text-sm font-black uppercase tracking-widest">Audience Summary</h3>
-              </div>
-              <div className="space-y-6">
-                <div className="flex justify-between items-end border-b border-border pb-4">
-                  <span className="text-xs font-bold text-secondary uppercase">Target Size</span>
-                  <span className="text-xl font-black">{proposal.audience_size?.toLocaleString()}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-card-bg rounded-2xl">
-                    <span className="text-[10px] font-black text-secondary uppercase block mb-1">Avg Spend</span>
-                    <span className="text-sm font-black">$42.50</span>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end border-b border-border pb-4">
+                    <span className="text-[10px] font-bold text-secondary uppercase">Projected Reach</span>
+                    <span className="text-xl font-black">{latestDraft.audience.size.toLocaleString()}</span>
                   </div>
-                  <div className="p-4 bg-card-bg rounded-2xl">
-                    <span className="text-[10px] font-black text-secondary uppercase block mb-1">Loyalty</span>
-                    <span className="text-sm font-black">Medium</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-card-bg rounded-2xl">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Spend</span>
+                      <span className="text-xs font-black">${Math.round(latestDraft.audience.avgSpend)}</span>
+                    </div>
+                    <div className="p-3 bg-card-bg rounded-2xl">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1">Churn Risk</span>
+                      <span className="text-xs font-black">{Math.round(latestDraft.audience.avgChurn)}%</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Forecast */}
-            <div className="bg-foreground text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
-              <BarChart3 className="absolute -bottom-4 -right-4 w-24 h-24 opacity-10" />
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-white/10 text-white rounded-lg backdrop-blur-md">
-                  <BarChart3 size={20} />
+              {/* Strategy Card */}
+              <div className="bg-white p-6 rounded-[32px] border border-border shadow-sm flex-1">
+                <div className="flex items-center gap-2 mb-6">
+                  <Target size={18} className="text-accent" />
+                  <h3 className="text-xs font-black uppercase tracking-widest">Campaign Strategy</h3>
                 </div>
-                <h3 className="text-sm font-black uppercase tracking-widest">Forecasted Impact</h3>
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1">Campaign Name</span>
+                    <p className="text-sm font-black">{latestDraft.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1">Reasoning</span>
+                    <p className="text-xs text-secondary leading-relaxed font-medium">
+                      {latestDraft.reasoning}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1">Communication</span>
+                    <div className="p-3 bg-card-bg rounded-xl border border-border mt-1">
+                      <p className="text-[11px] font-medium italic text-secondary leading-relaxed">
+                        "{latestDraft.message}"
+                      </p>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <span className="px-2 py-1 bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest rounded-md">
+                        {latestDraft.channel}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-white/60">Expected Reach</span>
-                  <span className="text-sm font-black">98.2%</span>
+
+              {/* Action Section */}
+              <div className="bg-foreground text-white p-6 rounded-[32px] shadow-xl relative overflow-hidden">
+                <BarChart3 className="absolute -bottom-4 -right-4 w-20 h-20 opacity-10" />
+                <h3 className="text-xs font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
+                <div className="flex justify-between items-end mb-8">
+                  <span className="text-2xl font-black text-success">${latestDraft.forecast.revenue.toLocaleString()}</span>
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Expected Lift</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-white/60">Expected Opens</span>
-                  <span className="text-sm font-black">42.5%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-white/60">Conv. Probability</span>
-                  <span className="text-sm font-black">8.4%</span>
-                </div>
-                <div className="pt-4 border-t border-white/10 mt-2">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-1">Projected Revenue</span>
-                  <span className="text-2xl font-black text-success">$12,450.00</span>
-                </div>
+                {status === 'LAUNCHED' ? (
+                  <button 
+                    onClick={() => navigate('/workspace/campaigns')}
+                    className="w-full py-4 bg-success text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-success/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                  >
+                    Campaign Running <Play size={14} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleLaunch}
+                    disabled={isLaunching}
+                    className="w-full py-4 bg-accent text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                  >
+                    {isLaunching ? <Loader2 size={16} className="animate-spin" /> : <>Launch Campaign <Rocket size={16} /></>}
+                  </button>
+                )}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (state === 'launched') {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center text-center">
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="p-12 bg-white rounded-[40px] border border-border shadow-2xl max-w-lg"
-        >
-          <div className="w-24 h-24 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-8">
-            <Rocket size={48} />
-          </div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter mb-4">Blast Off!</h2>
-          <p className="text-secondary mb-10 leading-relaxed font-medium">
-            Your campaign strategy has been deployed across all channels. Catalyst is now monitoring performance in real-time.
-          </p>
-          <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => navigate('/workspace/campaigns')}
-              className="w-full py-4 rounded-2xl bg-accent text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-accent/20 hover:scale-[1.02] transition-all"
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="placeholder"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex-1 border-2 border-dashed border-border rounded-[32px] flex flex-col items-center justify-center p-8 text-center"
             >
-              Monitor Progress
-            </button>
-            <button 
-              onClick={() => { setState('idle'); setPrompt(''); }}
-              className="w-full py-4 rounded-2xl border border-border text-secondary font-black text-sm uppercase tracking-widest hover:bg-card-bg transition-all"
-            >
-              Create Another
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto py-12">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-16"
-      >
-        <span className="text-[10px] font-black text-accent uppercase tracking-[0.4em] mb-4 block">Engine Interface</span>
-        <h1 className="text-6xl font-black uppercase tracking-tighter mb-4">What business outcome <br /> are you trying to achieve?</h1>
-        <p className="text-secondary text-lg max-w-xl mx-auto font-medium">
-          Catalyst will analyze your customer DNA and architect a high-conversion strategy in seconds.
-        </p>
-      </motion.div>
-
-      <div className="relative mb-12 group">
-        <div className="absolute inset-0 bg-accent/5 rounded-[32px] blur-3xl group-hover:bg-accent/10 transition-all duration-500" />
-        <div className="relative bg-white border-2 border-border p-2 rounded-[32px] shadow-2xl focus-within:border-accent transition-all flex items-center gap-2">
-          <input 
-            type="text" 
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handlePropose()}
-            placeholder="e.g. Increase repeat purchases for high-value customers"
-            className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-xl font-bold placeholder:text-gray-300"
-          />
-          <button 
-            onClick={handlePropose}
-            disabled={!prompt}
-            className={`p-4 rounded-2xl transition-all ${
-              prompt ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-card-bg text-secondary'
-            }`}
-          >
-            <Send size={24} />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {examplePrompts.map((example, i) => (
-          <button 
-            key={i}
-            onClick={() => setPrompt(example)}
-            className="text-left p-6 bg-white border border-border rounded-2xl hover:border-accent hover:bg-accent/[0.02] transition-all group"
-          >
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-black text-secondary uppercase tracking-widest group-hover:text-accent transition-colors">{example}</span>
-              <ArrowRight size={16} className="text-border group-hover:text-accent group-hover:translate-x-1 transition-all" />
-            </div>
-          </button>
-        ))}
+              <div className="w-12 h-12 bg-card-bg rounded-full flex items-center justify-center mb-4 text-secondary/30">
+                <Target size={24} />
+              </div>
+              <p className="text-[10px] font-black text-secondary/40 uppercase tracking-widest">
+                Strategic Summary <br /> will appear here
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

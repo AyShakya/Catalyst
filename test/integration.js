@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 async function testIntegration() {
-  const BACKEND_URL = "http://localhost:3000/api";
+  const BACKEND_URL = "http://localhost:5000/api";
   
   try {
     console.log("1. Creating Brand...");

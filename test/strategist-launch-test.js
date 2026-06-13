@@ -43,7 +43,7 @@ async function runTest() {
     console.log("\n--- Launched Campaign Details ---");
     console.log(`Name: ${campaign.campaign_name}`);
     console.log(`Channel: ${campaign.channel}`);
-    console.log(`Filters: ${campaign.filter_plan}`);
+    console.log(`Filters: ${JSON.stringify(campaign.filter_plan)}`);
     
     console.log("\nTest Completed Successfully.");
   } catch (error) {

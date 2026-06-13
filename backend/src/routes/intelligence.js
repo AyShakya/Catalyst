@@ -1,18 +1,38 @@
 const express = require("express");
 const intelligenceController = require("../controllers/intelligence-controller");
+const strategistController = require("../controllers/strategist-controller");
 
 const router = express.Router();
 
+/**
+ * @route   GET /api/intelligence/:brandId/opportunities
+ * @desc    Proactively tells marketers what they should do based on deterministic rules.
+ */
 router.get("/:brandId/opportunities", intelligenceController.getOpportunityFeed);
+
+/**
+ * @route   GET /api/intelligence/:brandId/executive-brief
+ * @desc    Provides a business-level summary of health, risks, and recommendations.
+ */
 router.get("/:brandId/executive-brief", intelligenceController.getExecutiveBrief);
 
-// Strategist Chat
-router.post("/:brandId/chat", intelligenceController.chatWithStrategist);
+/**
+ * @route   POST /api/intelligence/:brandId/strategist/chat
+ * @desc    Interactive chat with the AI Marketing Strategist. 
+ *          Maintains a persistent session and draft versioning.
+ */
+router.post("/:brandId/strategist/chat", strategistController.chatWithStrategist);
 
-// Session State
-router.get("/session/:sessionId", intelligenceController.getStrategistSession);
+/**
+ * @route   GET /api/intelligence/strategist/session/:sessionId
+ * @desc    Retrieves the full history and latest campaign draft for a strategist session.
+ */
+router.get("/strategist/session/:sessionId", strategistController.getStrategistSession);
 
-// Launch Campaign from Strategist
-router.post("/:brandId/launch", intelligenceController.launchStrategistCampaign);
+/**
+ * @route   POST /api/intelligence/:brandId/strategist/launch
+ * @desc    Converts the latest strategist draft into a formal campaign and locks the session.
+ */
+router.post("/:brandId/strategist/launch", strategistController.launchStrategistCampaign);
 
 module.exports = router;
