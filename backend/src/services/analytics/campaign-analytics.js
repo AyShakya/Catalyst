@@ -1,5 +1,6 @@
 const { query } = require("../../config/db");
 const opportunityFeedService = require("../intelligence/opportunity-feed");
+const campaignIntelligenceService = require("../intelligence/campaign-intelligence");
 
 /**
  * Recalculates and persists metrics for a campaign.
