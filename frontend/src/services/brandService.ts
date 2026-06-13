@@ -10,7 +10,7 @@ export interface Brand {
 
 export const createBrand = async (name: string, industry?: string): Promise<Brand> => {
   const response = await axios.post(`${API_URL}/brands`, { name, industry });
-  return response.data;
+  return response.data.data;
 };
 
 export const getBrandAnalytics = async (brandId: string) => {

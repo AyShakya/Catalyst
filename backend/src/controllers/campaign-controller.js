@@ -291,7 +291,19 @@ async function listCampaigns(req, res) {
     const { brand_id } = req.query;
     if (!brand_id) return res.status(400).json({ error: "brand_id query param is required" });
 
-    const result = await query("SELECT * FROM campaigns WHERE brand_id = $1 ORDER BY created_at DESC", [brand_id]);
+    const result = await query(`
+      SELECT c.*, 
+             COALESCE(m.total_sent, 0) as sent,
+             COALESCE(m.total_delivered, 0) as delivered,
+             COALESCE(m.total_opened, 0) as opened,
+             COALESCE(m.total_clicked, 0) as clicked,
+             COALESCE(m.revenue_generated, 0) as revenue
+      FROM campaigns c
+      LEFT JOIN campaign_metrics m ON c.id = m.campaign_id
+      WHERE c.brand_id = $1 
+      ORDER BY c.created_at DESC
+    `, [brand_id]);
+    
     res.json({
       status: "success",
       data: result.rows

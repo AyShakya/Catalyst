@@ -46,10 +46,11 @@ const AnalyticsPage: React.FC = () => {
   }
 
   // Aggregate Metrics
-  const totalDelivered = campaigns.reduce((acc, c) => acc + (c.delivered || 0), 0);
-  const totalOpened = campaigns.reduce((acc, c) => acc + (c.opened || 0), 0);
-  const totalClicked = campaigns.reduce((acc, c) => acc + (c.clicked || 0), 0);
-  const totalAudience = campaigns.reduce((acc, c) => acc + (c.audience_size || 0), 0);
+  const totalDelivered = campaigns.reduce((acc, c) => acc + (Number(c.delivered) || 0), 0);
+  const totalOpened = campaigns.reduce((acc, c) => acc + (Number(c.opened) || 0), 0);
+  const totalClicked = campaigns.reduce((acc, c) => acc + (Number(c.clicked) || 0), 0);
+  const totalAudience = campaigns.reduce((acc, c) => acc + (Number(c.audience_size) || 0), 0);
+  const totalRevenue = campaigns.reduce((acc, c) => acc + (Number(c.revenue) || 0), 0);
   
   const deliveryRate = totalAudience > 0 ? (totalDelivered / totalAudience) * 100 : 0;
   const openRate = totalDelivered > 0 ? (totalOpened / totalDelivered) * 100 : 0;
@@ -61,11 +62,18 @@ const AnalyticsPage: React.FC = () => {
     { name: 'Email', value: campaigns.filter(c => c.channel === 'Email').length },
   ];
 
-  const trendData = campaigns.slice().reverse().map(c => ({
-    name: c.name.substring(0, 10),
-    openRate: totalDelivered > 0 ? (c.opened / (c.delivered || 1)) * 100 : 0,
-    ctr: totalOpened > 0 ? (c.clicked / (c.opened || 1)) * 100 : 0,
-  }));
+  const trendData = campaigns.slice().reverse().map(c => {
+    const delivered = Number(c.delivered) || 0;
+    const opened = Number(c.opened) || 0;
+    const clicked = Number(c.clicked) || 0;
+    const name = c.campaign_name || c.name || 'Untitled';
+
+    return {
+      name: name.substring(0, 10),
+      openRate: delivered > 0 ? (opened / delivered) * 100 : 0,
+      ctr: opened > 0 ? (clicked / opened) * 100 : 0,
+    };
+  });
 
   return (
     <div className="space-y-8 pb-20">
@@ -101,7 +109,7 @@ const AnalyticsPage: React.FC = () => {
             <TrendingUp size={24} />
           </div>
           <h3 className="text-xs font-black uppercase tracking-widest text-secondary mb-1">Revenue</h3>
-          <p className="text-3xl font-black">$12,450</p>
+          <p className="text-3xl font-black">${totalRevenue.toLocaleString()}</p>
         </div>
       </div>
 
