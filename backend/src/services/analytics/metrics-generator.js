@@ -4,6 +4,7 @@ const { generateDatasetSummary } = require("./dataset-summary");
 const { generateMetricDistributions } = require("./metric-distributions");
 const { seedMetricRegistry } = require("./metric-registry");
 const { seedSegmentRegistry } = require("./segment-registry");
+const opportunityFeedService = require("../intelligence/opportunity-feed");
 
 async function regenerateMetrics(brandId, db = { query }) {
   let jobId;
@@ -31,6 +32,20 @@ async function regenerateMetrics(brandId, db = { query }) {
     // Step 4: Seed registries used by audience discovery.
     const registryResult = await seedMetricRegistry(db);
     const segmentResult = await seedSegmentRegistry(db);
+
+    // Step 5: Refresh Business Intelligence Opportunities
+    try {
+      await opportunityFeedService.refreshOpportunities(brandId, db);
+      // Refresh campaign intelligence (Async/Background)
+      setImmediate(() => {
+        campaignIntelligenceService.refreshIntelligence(brandId).catch(err => 
+          console.error(`Background intel refresh error during metrics regen for brand ${brandId}:`, err)
+        );
+      });
+    } catch (oppError) {
+      console.error("Failed to refresh opportunities during metrics regeneration:", oppError);
+      // Don't fail the whole job if BI layer fails (graceful fallback)
+    }
 
     const recordsProcessed =
       metricsResult.metrics_calculated +

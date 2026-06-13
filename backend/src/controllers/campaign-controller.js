@@ -3,6 +3,7 @@ const { calculateForecast } = require("../services/audience/forecasting-engine")
 const { generateCampaignStrategy } = require("../services/audience/ai-strategist");
 const { buildAudienceQuery } = require("../services/audience/query-builder");
 const { dispatchCampaign } = require("../services/campaign/dispatcher");
+const campaignIntelligenceService = require("../services/intelligence/campaign-intelligence");
 
 /**
  * Creates a campaign proposal using AI Pass 2.
@@ -15,10 +16,13 @@ async function proposeCampaign(req, res) {
       return res.status(400).json({ error: "brand_id, goal, audience_preview, and filter_plan are required" });
     }
 
-    // 1. AI Pass 2: Campaign Strategy
-    const strategy = await generateCampaignStrategy(goal, audiencePreview);
+    // 1. Fetch full campaign intelligence context
+    const intelligenceSummary = await campaignIntelligenceService.getCampaignIntelligenceSummary(brandId);
 
-    // 2. Deterministic Forecast
+    // 2. AI Pass 2: Campaign Strategy
+    const strategy = await generateCampaignStrategy(goal, audiencePreview, intelligenceSummary);
+
+    // 3. Deterministic Forecast
     const forecast = calculateForecast(audiencePreview.audience_size);
 
     // 3. Persist as DRAFT
@@ -34,9 +38,9 @@ async function proposeCampaign(req, res) {
 
     const values = [
       brandId,
-      goal,
+      strategy.goal_category || 'RETENTION', // Standardized category from AI
       strategy.campaign_name,
-      goal, // campaign_prompt
+      goal, // Raw user prompt preserved here
       strategy.channel,
       strategy.message_template,
       strategy.reasoning,

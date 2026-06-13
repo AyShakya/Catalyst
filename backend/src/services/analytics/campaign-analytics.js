@@ -1,4 +1,5 @@
 const { query } = require("../../config/db");
+const opportunityFeedService = require("../intelligence/opportunity-feed");
 
 /**
  * Recalculates and persists metrics for a campaign.
@@ -60,6 +61,24 @@ async function refreshCampaignMetrics(campaignId) {
       campaignId, sent, delivered, opened, clicked,
       delivery_rate, open_rate, ctr, conversion_rate
     ]);
+
+    // After campaign metrics are updated, refresh business intelligence opportunities
+    try {
+      const brandRes = await query("SELECT brand_id FROM campaigns WHERE id = $1", [campaignId]);
+      if (brandRes.rows.length > 0) {
+        const brandId = brandRes.rows[0].brand_id;
+        // Refresh opportunities
+        await opportunityFeedService.refreshOpportunities(brandId);
+        // Refresh campaign intelligence (Async/Background)
+        setImmediate(() => {
+          campaignIntelligenceService.refreshIntelligence(brandId).catch(err => 
+            console.error(`Background intel refresh error for brand ${brandId}:`, err)
+          );
+        });
+      }
+    } catch (oppError) {
+      console.error(`Failed to refresh intelligence for campaign ${campaignId}:`, oppError);
+    }
 
     console.log(`Metrics refreshed for campaign ${campaignId}`);
 
