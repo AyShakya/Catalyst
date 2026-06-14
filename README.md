@@ -1,7 +1,6 @@
 # Catalyst
 
 Work - 
-2. Ensuring the weekly executive breif only runs weekly.
 3. Maybe adding a jobqueue for all of this async background proceses.
 4. Maybe introducing caching somewhere, and maybe setting up multi-agent orchestration.
 5. Testing the behaviour, scalability, and optimization for larger data space, like 10k customers and orders.

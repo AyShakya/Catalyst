@@ -265,6 +265,10 @@ const StrategistPage: React.FC = () => {
   const handleLaunch = async () => {
     if (!sessionId || isLaunching || status === 'LAUNCHED' || isLoading) return;
 
+    if (!window.confirm("Are you sure you want to execute this campaign? This action cannot be undone and real messages will be dispatched.")) {
+      return;
+    }
+
     const brandId = localStorage.getItem('catalyst_brand_id')!;
     setIsLaunching(true);
 
