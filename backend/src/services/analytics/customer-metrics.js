@@ -2,20 +2,27 @@ const { query } = require("../../config/db");
 
 async function calculateCustomerMetrics(brandId, db = { query }) {
   const calculateSQL = `
-    WITH order_stats AS (
-      SELECT
-        customer_id,
-        COUNT(*) as total_orders,
-        SUM(amount) as total_spend,
-        AVG(amount) as avg_order_value,
-        MAX(amount) as highest_order_value,
-        MIN(amount) as lowest_order_value,
-        MIN(order_date) as first_purchase_date,
-        MAX(order_date) as last_purchase_date,
-        ARRAY_AGG(order_date ORDER BY order_date) as order_dates
-      FROM orders
+    WITH customer_base AS (
+      SELECT id AS customer_id
+      FROM customers
       WHERE brand_id = $1
-      GROUP BY customer_id
+    ),
+    order_stats AS (
+      SELECT
+        cb.customer_id,
+        COUNT(o.id) as total_orders,
+        COALESCE(SUM(o.amount), 0) as total_spend,
+        COALESCE(AVG(o.amount), 0) as avg_order_value,
+        MAX(o.amount) as highest_order_value,
+        MIN(o.amount) as lowest_order_value,
+        MIN(o.order_date) as first_purchase_date,
+        MAX(o.order_date) as last_purchase_date,
+        ARRAY_AGG(o.order_date ORDER BY o.order_date) FILTER (WHERE o.order_date IS NOT NULL) as order_dates
+      FROM customer_base cb
+      LEFT JOIN orders o
+        ON o.customer_id = cb.customer_id
+       AND o.brand_id = $1
+      GROUP BY cb.customer_id
     ),
     gaps_calculation AS (
       SELECT
@@ -27,10 +34,13 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
         lowest_order_value,
         first_purchase_date,
         last_purchase_date,
-        (CURRENT_DATE - last_purchase_date)::INTEGER as days_since_last_purchase,
+        CASE
+          WHEN last_purchase_date IS NULL THEN NULL
+          ELSE (CURRENT_DATE - last_purchase_date)::INTEGER
+        END as days_since_last_purchase,
         order_dates,
         CASE
-          WHEN total_orders = 1 THEN NULL
+          WHEN total_orders <= 1 THEN NULL
           ELSE (
             SELECT AVG(gap)::NUMERIC
             FROM (
@@ -115,7 +125,7 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
                 ELSE 0
               END +
               CASE
-                WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
+                WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL AND fc.days_since_last_purchase IS NOT NULL THEN
                   GREATEST(0, (1 - LEAST(fc.days_since_last_purchase::NUMERIC / pr.avg_gap_days, 1)) * 20)
                 ELSE 0
               END
@@ -126,7 +136,7 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
         ROUND(
           (
             CASE
-              WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL THEN
+              WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL AND fc.days_since_last_purchase IS NOT NULL THEN
                 LEAST(
                   ((fc.days_since_last_purchase::NUMERIC / NULLIF(fc.avg_days_between_orders, 0)) * 100),
                   100

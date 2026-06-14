@@ -61,7 +61,7 @@ const OverviewPage: React.FC = () => {
         setData(analyticsRes.data);
         setCampaigns(campaignsRes.data || []);
         setOpportunities(oppsRes.data || []);
-        setExecutiveBrief(briefRes.data || '');
+        setExecutiveBrief(briefRes.data?.brief || '');
       } catch (err) {
         console.error(err);
       } finally {
@@ -188,14 +188,14 @@ const OverviewPage: React.FC = () => {
 
       {/* Charts & Distributions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-border shadow-sm">
+        <div className="lg:col-span-2 bg-white p-8 rounded-4xl border border-border shadow-sm">
           <div className="flex justify-between items-center mb-10">
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-secondary">Revenue Distribution</h3>
             <span className="text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg">LTV Segmentation</span>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={distributions?.lifetime_value || []}>
+              <BarChart data={distributions?.total_spend || []}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#525252' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#525252' }} />
@@ -207,7 +207,7 @@ const OverviewPage: React.FC = () => {
         </div>
 
         <div className="space-y-8">
-          <div className="bg-white p-8 rounded-[32px] border border-border shadow-sm">
+          <div className="bg-white p-8 rounded-4xl border border-border shadow-sm">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-8">Loyalty DNA</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -227,7 +227,7 @@ const OverviewPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-foreground text-white p-8 rounded-[32px] shadow-xl">
+          <div className="bg-foreground text-white p-8 rounded-4xl shadow-xl">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-6">Retention Pulse</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">

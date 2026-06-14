@@ -46,26 +46,26 @@ const AnalyticsPage: React.FC = () => {
   }
 
   // Aggregate Metrics
-  const totalDelivered = campaigns.reduce((acc, c) => acc + (Number(c.delivered) || 0), 0);
-  const totalOpened = campaigns.reduce((acc, c) => acc + (Number(c.opened) || 0), 0);
-  const totalClicked = campaigns.reduce((acc, c) => acc + (Number(c.clicked) || 0), 0);
+  const totalDelivered = campaigns.reduce((acc, c) => acc + (Number(c.delivered || c.forecast_delivered) || 0), 0);
+  const totalOpened = campaigns.reduce((acc, c) => acc + (Number(c.opened || c.forecast_opened) || 0), 0);
+  const totalClicked = campaigns.reduce((acc, c) => acc + (Number(c.clicked || c.forecast_clicked) || 0), 0);
   const totalAudience = campaigns.reduce((acc, c) => acc + (Number(c.audience_size) || 0), 0);
-  const totalRevenue = campaigns.reduce((acc, c) => acc + (Number(c.revenue) || 0), 0);
+  const totalRevenue = campaigns.reduce((acc, c) => acc + (Number(c.revenue || c.forecast_purchased) || 0), 0);
   
   const deliveryRate = totalAudience > 0 ? (totalDelivered / totalAudience) * 100 : 0;
   const openRate = totalDelivered > 0 ? (totalOpened / totalDelivered) * 100 : 0;
   const ctr = totalOpened > 0 ? (totalClicked / totalOpened) * 100 : 0;
 
   const channelData = [
-    { name: 'WhatsApp', value: campaigns.filter(c => c.channel === 'WhatsApp').length },
-    { name: 'SMS', value: campaigns.filter(c => c.channel === 'SMS').length },
-    { name: 'Email', value: campaigns.filter(c => c.channel === 'Email').length },
+    { name: 'WhatsApp', value: campaigns.filter(c => String(c.channel).toUpperCase() === 'WHATSAPP').length },
+    { name: 'SMS', value: campaigns.filter(c => String(c.channel).toUpperCase() === 'SMS').length },
+    { name: 'Email', value: campaigns.filter(c => String(c.channel).toUpperCase() === 'EMAIL').length },
   ];
 
   const trendData = campaigns.slice().reverse().map(c => {
-    const delivered = Number(c.delivered) || 0;
-    const opened = Number(c.opened) || 0;
-    const clicked = Number(c.clicked) || 0;
+    const delivered = Number(c.delivered || c.forecast_delivered) || 0;
+    const opened = Number(c.opened || c.forecast_opened) || 0;
+    const clicked = Number(c.clicked || c.forecast_clicked) || 0;
     const name = c.campaign_name || c.name || 'Untitled';
 
     return {
