@@ -43,21 +43,21 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-20">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter">Campaigns</h1>
+          <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter">Campaigns</h1>
           <p className="text-secondary font-medium">Strategy Performance & Management</p>
         </div>
         <button 
           onClick={() => navigate('/workspace/strategist')}
-          className="bg-accent text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-accent/90 transition-all flex items-center gap-2"
+          className="bg-accent text-white px-5 sm:px-6 py-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-accent/90 transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           New Strategy <Send size={16} />
         </button>
       </div>
 
       {campaigns.length === 0 ? (
-        <div className="bg-white border border-border rounded-[40px] p-20 text-center">
+        <div className="bg-white border border-border rounded-[40px] p-8 sm:p-20 text-center">
           <div className="w-20 h-20 bg-card-bg text-secondary rounded-full flex items-center justify-center mx-auto mb-6">
             <Send size={32} />
           </div>
@@ -94,7 +94,7 @@ const CampaignsPage: React.FC = () => {
                 </div>
               </div>
 
-              <h3 className="text-lg font-black uppercase tracking-tight mb-2 group-hover:text-accent transition-colors">{campaign.campaign_name || campaign.name}</h3>
+              <h3 className="text-lg font-black uppercase tracking-tight mb-2 group-hover:text-accent transition-colors break-words">{campaign.campaign_name || campaign.name}</h3>
               <p className="text-xs text-secondary font-medium line-clamp-2 mb-6">
                 {campaign.reasoning || "AI-architected re-engagement strategy."}
               </p>

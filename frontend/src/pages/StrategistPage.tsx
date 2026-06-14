@@ -261,9 +261,9 @@ const StrategistPage: React.FC = () => {
   ];
 
   return (
-    <div className="h-[calc(100vh-120px)] flex gap-8">
+    <div className="h-auto lg:h-[calc(100vh-120px)] flex flex-col xl:flex-row gap-6 lg:gap-8">
       {/* Left Chat Section */}
-      <div className="flex-1 flex flex-col bg-white rounded-4xl border border-border shadow-sm overflow-hidden relative">
+      <div className="flex-1 min-w-0 min-h-[60vh] lg:min-h-0 flex flex-col bg-white rounded-4xl border border-border shadow-sm overflow-hidden relative">
         <div className="p-6 border-b border-border flex justify-between items-center bg-card-bg/30">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-accent text-white rounded-xl shadow-lg shadow-accent/20">
@@ -283,7 +283,7 @@ const StrategistPage: React.FC = () => {
             {sessionId && status !== 'LAUNCHED' && (
               <button 
                 onClick={handleCloseSession}
-                className="flex items-center gap-1.5 text-[10px] font-black text-error uppercase tracking-widest bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg transition-colors"
+                className="hidden sm:flex items-center gap-1.5 text-[10px] font-black text-error uppercase tracking-widest bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Trash2 size={12} /> Discard
               </button>
@@ -296,7 +296,7 @@ const StrategistPage: React.FC = () => {
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
           <AnimatePresence initial={false}>
             {!sessionId && activeSessions.length > 0 && messages.length === 0 && (
               <motion.div 
@@ -365,7 +365,7 @@ const StrategistPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[80%] flex gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`max-w-[92%] sm:max-w-[80%] flex gap-3 sm:gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                     msg.role === 'USER' ? 'bg-card-bg border border-border text-secondary' : 'bg-accent text-white'
                   }`}>
@@ -398,7 +398,7 @@ const StrategistPage: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        <div className="p-6 border-t border-border bg-card-bg/30">
+        <div className="p-4 sm:p-6 border-t border-border bg-card-bg/30">
           <div className="relative">
             <input 
               type="text"
@@ -423,7 +423,7 @@ const StrategistPage: React.FC = () => {
       </div>
 
       {/* Right Strategy Snapshot */}
-      <div className="w-100 flex flex-col gap-6 h-full">
+      <div className="w-full xl:w-100 flex flex-col gap-6 h-auto xl:h-full min-w-0">
         <AnimatePresence mode="wait">
           {latestDraft ? (
             <motion.div 
@@ -431,7 +431,7 @@ const StrategistPage: React.FC = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2"
+              className="flex-1 flex flex-col gap-6 overflow-y-auto pr-0 xl:pr-2"
             >
               {/* Audience Section */}
               <div className="bg-white p-6 rounded-4xl border border-border shadow-sm">

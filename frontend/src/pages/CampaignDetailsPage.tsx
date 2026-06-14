@@ -60,7 +60,7 @@ const CampaignDetailsPage: React.FC = () => {
     { label: 'Delivered', value: metrics?.total_delivered || campaign.forecast_delivered || 0, color: '#6366f1' },
     { label: 'Opened', value: metrics?.total_opened || campaign.forecast_opened || 0, color: '#818cf8' },
     { label: 'Clicked', value: metrics?.total_clicked || campaign.forecast_clicked || 0, color: '#a5b4fc' },
-    { label: 'Conversions', value: metrics?.revenue_generated ? Math.floor((metrics.revenue_generated / 50)) : campaign.forecast_purchased || 0, color: '#10b981' },
+    { label: 'Conversions', value: campaign.forecast_purchased || 0, color: '#10b981' },
   ];
 
   return (
@@ -72,14 +72,14 @@ const CampaignDetailsPage: React.FC = () => {
         <ArrowLeft size={16} /> Back to Campaigns
       </button>
 
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
           <span className="text-[10px] font-black text-accent uppercase tracking-[0.3em] mb-2 block">Campaign Intelligence</span>
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none">{campaign.campaign_name || campaign.name}</h1>
+          <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none break-words">{campaign.campaign_name || campaign.name}</h1>
         </div>
         <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border ${
           campaign.status === 'RUNNING' ? 'border-success/20 bg-success/5 text-success' : 'border-border bg-card-bg text-secondary'
-        }`}>
+        } w-fit`}>
           {campaign.status === 'RUNNING' ? <Clock size={16} className="animate-pulse" /> : <CheckCircle2 size={16} />}
           <span className="text-xs font-black uppercase tracking-widest">{campaign.status}</span>
         </div>
@@ -88,7 +88,7 @@ const CampaignDetailsPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {/* Goal & Strategy */}
-          <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-8">
               <div className="p-2 bg-accent/10 text-accent rounded-lg">
                 <Target size={20} />
@@ -147,7 +147,7 @@ const CampaignDetailsPage: React.FC = () => {
           )}
 
           {/* Performance Funnel */}
-          <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl border border-border shadow-sm">
             <h3 className="text-sm font-black uppercase tracking-widest mb-10">Engagement Funnel</h3>
             <div className="space-y-4">
               {funnelSteps.map((step, i) => {
@@ -161,7 +161,7 @@ const CampaignDetailsPage: React.FC = () => {
                     <div className="h-10 w-full bg-card-bg rounded-xl overflow-hidden flex">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${Math.max(percentage, 0.5)}%` }}
+                        animate={{ width: `${Math.min(100, Math.max(percentage, 0.5))}%` }}
                         transition={{ duration: 1, delay: i * 0.1 }}
                         className="h-full flex items-center px-4"
                         style={{ backgroundColor: step.color }}
@@ -178,7 +178,7 @@ const CampaignDetailsPage: React.FC = () => {
 
         <div className="space-y-8">
           {/* Audience Metrics */}
-          <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-8">
               <div className="p-2 bg-success/10 text-success rounded-lg">
                 <Users size={20} />
@@ -198,7 +198,7 @@ const CampaignDetailsPage: React.FC = () => {
           </div>
 
           {/* Core KPIs */}
-          <div className="bg-foreground text-white p-8 rounded-3xl shadow-xl">
+          <div className="bg-foreground text-white p-5 sm:p-8 rounded-3xl shadow-xl">
             <div className="flex items-center gap-3 mb-8">
               <div className="p-2 bg-white/10 text-white rounded-lg">
                 <BarChart3 size={20} />
@@ -220,7 +220,7 @@ const CampaignDetailsPage: React.FC = () => {
               </div>
               <div className="pt-4">
                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-1">Revenue Generated</span>
-                <span className="text-4xl font-black text-success">${Number(metrics?.revenue_generated || 0).toLocaleString()}</span>
+                <span className="text-3xl sm:text-4xl font-black text-success break-words">${Number(metrics?.revenue_generated || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>

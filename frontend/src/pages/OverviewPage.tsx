@@ -83,14 +83,14 @@ const OverviewPage: React.FC = () => {
   const { summary, distributions } = data || {};
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 sm:space-y-10 pb-12">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter">Business Health</h1>
+          <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter">Business Health</h1>
           <p className="text-secondary font-medium">Catalyst Intelligence Interface</p>
         </div>
-        <div className="bg-white border border-border px-4 py-2 rounded-2xl flex items-center gap-2">
+        <div className="bg-white border border-border px-4 py-2 rounded-2xl flex items-center gap-2 w-fit">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-widest">Active Intelligence Layer</span>
         </div>
@@ -100,17 +100,17 @@ const OverviewPage: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-accent text-white p-8 rounded-[40px] shadow-xl relative overflow-hidden"
+        className="bg-accent text-white p-5 sm:p-8 rounded-3xl sm:rounded-[40px] shadow-xl relative overflow-hidden"
       >
-        <Sparkles className="absolute -top-4 -right-4 w-48 h-48 opacity-10 rotate-12" />
+        <Sparkles className="absolute -top-8 -right-8 sm:-top-4 sm:-right-4 w-36 h-36 sm:w-48 sm:h-48 opacity-10 rotate-12" />
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
               <Zap size={20} />
             </div>
-            <span className="text-xs font-black uppercase tracking-[0.3em]">Executive Summary</span>
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.3em]">Executive Summary</span>
           </div>
-          <p className="text-2xl font-bold leading-relaxed max-w-4xl">
+          <p className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed max-w-4xl">
             {executiveBrief || "Analyzing your business performance to generate insights..."}
           </p>
         </div>
@@ -187,13 +187,13 @@ const OverviewPage: React.FC = () => {
       </div>
 
       {/* Charts & Distributions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-4xl border border-border shadow-sm">
-          <div className="flex justify-between items-center mb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="lg:col-span-2 bg-white p-5 sm:p-8 rounded-4xl border border-border shadow-sm min-w-0">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6 sm:mb-10">
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-secondary">Revenue Distribution</h3>
-            <span className="text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg">LTV Segmentation</span>
+            <span className="text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg w-fit">LTV Segmentation</span>
           </div>
-          <div className="h-80">
+          <div className="h-64 sm:h-80 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={distributions?.total_spend || []}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -206,10 +206,10 @@ const OverviewPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-8">
-          <div className="bg-white p-8 rounded-4xl border border-border shadow-sm">
+        <div className="space-y-6 sm:space-y-8 min-w-0">
+          <div className="bg-white p-5 sm:p-8 rounded-4xl border border-border shadow-sm min-w-0">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-8">Loyalty DNA</h3>
-            <div className="h-64">
+            <div className="h-56 sm:h-64 min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -227,7 +227,7 @@ const OverviewPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-foreground text-white p-8 rounded-4xl shadow-xl">
+          <div className="bg-foreground text-white p-5 sm:p-8 rounded-4xl shadow-xl">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-6">Retention Pulse</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
