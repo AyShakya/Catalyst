@@ -21,6 +21,7 @@ Work -
        * Risk: Potential stack overflow or memory leaks under extreme volume.
        * Suggestion: Implement a Retry-After header or a standard retry queue with exponential backoff.
 20. Searching mechanism in campaigns.
+21. Showing the text of executive summary in formatted sense.
 ---
 
 ## 📈 Scale Assumptions & Architectural Trade-offs

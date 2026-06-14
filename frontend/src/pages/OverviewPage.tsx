@@ -8,7 +8,7 @@ import {
   Users, DollarSign, Wallet, Send, 
   TrendingUp, AlertCircle, Sparkles,
   ArrowRight, ShieldAlert, Zap, ChevronRight,
-  LucideIcon
+  LucideIcon, Target, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -272,7 +272,9 @@ const OverviewPage: React.FC = () => {
                 </div>
               </div>
               <div className="h-80 sm:h-96 w-full">
-                <CustomerHealthMatrix data={healthMatrix} />
+                <React.Suspense fallback={<MatrixSkeleton />}>
+                  <CustomerHealthMatrix data={healthMatrix} />
+                </React.Suspense>
               </div>
               <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
@@ -306,7 +308,9 @@ const OverviewPage: React.FC = () => {
                 <DollarSign size={14} className="text-accent" /> Revenue DNA
               </h3>
               <div className="flex-1 min-h-[300px]">
-                <RevenueDonut data={distributions?.total_spend || []} />
+                <React.Suspense fallback={<DonutSkeleton />}>
+                  <RevenueDonut data={distributions?.total_spend || []} />
+                </React.Suspense>
               </div>
             </div>
           )}

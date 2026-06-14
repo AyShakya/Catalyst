@@ -29,6 +29,7 @@ function App() {
             <Route path="/setup" element={<BrandSetupPage />} />
 
             <Route path="/workspace" element={<WorkspaceLayout />}>
+              <Route index element={<OverviewPage />} />
               <Route path="overview" element={<OverviewPage />} />
               <Route path="strategist" element={<StrategistPage />} />
               <Route path="campaigns" element={<CampaignsPage />} />

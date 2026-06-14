@@ -65,7 +65,13 @@ const WorkspaceLayout: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 min-w-0 overflow-y-auto bg-card-bg relative">
         <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-7xl mx-auto w-full">
-          <Outlet />
+          <React.Suspense fallback={
+            <div className="flex items-center justify-center h-[50vh]">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+            </div>
+          }>
+            <Outlet />
+          </React.Suspense>
         </div>
       </main>
     </div>
