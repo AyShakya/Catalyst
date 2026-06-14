@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Target, Users, MessageSquare, 
-  BarChart3, Send, CheckCircle2, Clock, Map, Play
+  BarChart3, Send, CheckCircle2, Clock, Map, Play, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCampaignDetails, getCampaignMetrics, getCampaignMilestones } from '../services/brandService';

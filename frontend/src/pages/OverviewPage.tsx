@@ -368,54 +368,6 @@ const OverviewPage: React.FC = () => {
         </div>
       </div>
 
-      {/* V2: Opportunity Feed */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[9px] sm:text-[10px] font-black text-secondary uppercase tracking-[0.3em] shrink-0">Strategic Opportunities</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {loading ? (
-            <>
-              <OpportunitySkeleton />
-              <OpportunitySkeleton />
-              <OpportunitySkeleton />
-            </>
-          ) : (
-            opportunities.slice(0, 3).map((opp, i) => (
-              <motion.div 
-                key={opp.id}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white p-5 sm:p-6 rounded-3xl border border-border shadow-sm flex flex-col justify-between group hover:border-accent hover:shadow-lg transition-all min-w-0"
-              >
-                <div className="min-w-0">
-                  <div className="flex justify-between items-start mb-4 gap-2">
-                    <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md shrink-0 ${
-                      opp.severity === 'CRITICAL' ? 'bg-error/10 text-error' : 
-                      opp.severity === 'HIGH' ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent'
-                    }`}>
-                      {opp.severity} Impact
-                    </span>
-                    <ShieldAlert size={16} className="text-border group-hover:text-accent transition-colors shrink-0" />
-                  </div>
-                  <h4 className="text-sm font-black uppercase tracking-tight mb-2 leading-snug break-words line-clamp-2">{opp.title}</h4>
-                  <p className="text-[11px] sm:text-xs text-secondary font-medium leading-relaxed mb-6 break-words line-clamp-3">{opp.description}</p>
-                </div>
-                <button 
-                  onClick={() => navigate(`/workspace/strategist?prompt=${encodeURIComponent(opp.title)}`)}
-                  className="flex items-center justify-between w-full p-3.5 sm:p-4 bg-card-bg rounded-2xl group-hover:bg-accent group-hover:text-white transition-all shrink-0"
-                >
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Execute Strategy</span>
-                  <ArrowRight size={14} className="shrink-0" />
-                </button>
-              </motion.div>
-            ))
-          )}
-        </div>
-      </div>
     </div>
   );
 };
