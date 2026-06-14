@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithStrategist, chatWithStrategistStream, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
 import { Skeleton } from '../components/layout/Skeleton';
+import { CampaignDraft } from '../types/intelligence';
 
 type Message = {
   role: 'USER' | 'ASSISTANT';
@@ -16,29 +17,12 @@ type Message = {
   timestamp?: string;
 };
 
-type Draft = {
-  version: number;
-  name: string;
-  goal: string;
-  channel: string;
-  message: string;
-  reasoning: string;
-  filters: any[];
-  audience: {
-    size: number;
-    avgSpend: number;
-    avgOrderValue: number;
-    avgLoyalty: number;
-    avgChurn: number;
-  };
-  forecast: {
-    delivered: number;
-    opened: number;
-    clicked: number;
-    conversions: number;
-    revenue: number;
-  };
-};
+interface ActiveSession {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  latestDraft: CampaignDraft | null;
+}
 
 const ThinkingDots = () => (
   <div className="flex gap-1 shrink-0 py-1">
@@ -53,11 +37,11 @@ const StrategistPage: React.FC = () => {
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [latestDraft, setLatestDraft] = useState<Draft | null>(null);
+  const [latestDraft, setLatestDraft] = useState<CampaignDraft | null>(null);
   const [status, setStatus] = useState<'ACTIVE' | 'LAUNCHED'>('ACTIVE');
   const [isLoading, setIsLoading] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
-  const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const streamingAssistantIndexRef = useRef<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -518,16 +502,16 @@ const StrategistPage: React.FC = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-end border-b border-border pb-4 gap-2">
                       <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase truncate">Projected Reach</span>
-                      <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft?.audience.size.toLocaleString() || '0'}</span>
+                      <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft?.audience.audience_size.toLocaleString() || '0'}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 bg-card-bg rounded-2xl min-w-0">
                         <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Avg Order</span>
-                        <span className="text-xs font-black truncate block">${Math.round(latestDraft?.audience.avgOrderValue || (latestDraft ? latestDraft.audience.avgSpend / 10 : 0))}</span>
+                        <span className="text-xs font-black truncate block">${Math.round(latestDraft?.audience.avg_order_value || (latestDraft ? latestDraft.audience.avg_spend / 10 : 0))}</span>
                       </div>
                       <div className="p-3 bg-card-bg rounded-2xl min-w-0">
                         <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Churn Risk</span>
-                        <span className="text-xs font-black truncate block">{Math.round(latestDraft?.audience.avgChurn || 0)}%</span>
+                        <span className="text-xs font-black truncate block">{Math.round(latestDraft?.audience.avg_churn || 0)}%</span>
                       </div>
                     </div>
                   </div>

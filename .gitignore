@@ -25,8 +25,13 @@ dist-ssr
 
 env
 .env
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
 env.local
 .env.development.local
 .env.test.local
 .env.production.local           
-Channel_Service/channel_service.db
+channel_service/channel_service.db

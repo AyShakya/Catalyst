@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { BrandAnalytics, GrowthOpportunity, ExecutiveBrief } from '../types/intelligence';
+import { Campaign } from '../types/campaign';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -8,12 +10,18 @@ export interface Brand {
   industry?: string;
 }
 
+export interface ApiResponse<T> {
+  status: 'success' | 'error';
+  data: T;
+  message?: string;
+}
+
 export const createBrand = async (name: string, industry?: string): Promise<Brand> => {
   const response = await axios.post(`${API_URL}/brands`, { name, industry });
   return response.data.data;
 };
 
-export const getBrandAnalytics = async (brandId: string) => {
+export const getBrandAnalytics = async (brandId: string): Promise<ApiResponse<BrandAnalytics>> => {
   const response = await axios.get(`${API_URL}/brands/${brandId}/analytics`);
   return response.data;
 };
@@ -27,12 +35,12 @@ export const uploadData = async (brandId: string, customerCsv?: string, orderCsv
   return response.data;
 };
 
-export const getCampaigns = async (brandId: string) => {
+export const getCampaigns = async (brandId: string): Promise<ApiResponse<Campaign[]>> => {
   const response = await axios.get(`${API_URL}/campaigns?brand_id=${brandId}`);
   return response.data;
 };
 
-export const getCampaignDetails = async (campaignId: string) => {
+export const getCampaignDetails = async (campaignId: string): Promise<ApiResponse<Campaign>> => {
   const response = await axios.get(`${API_URL}/campaigns/${campaignId}`);
   return response.data;
 };
@@ -48,12 +56,12 @@ export const getCampaignMilestones = async (campaignId: string) => {
 };
 
 // V2 Intelligence Layer
-export const getOpportunityFeed = async (brandId: string) => {
+export const getOpportunityFeed = async (brandId: string): Promise<ApiResponse<GrowthOpportunity[]>> => {
   const response = await axios.get(`${API_URL}/intelligence/${brandId}/opportunities`);
   return response.data;
 };
 
-export const getExecutiveBrief = async (brandId: string) => {
+export const getExecutiveBrief = async (brandId: string): Promise<ApiResponse<ExecutiveBrief>> => {
   const response = await axios.get(`${API_URL}/intelligence/${brandId}/executive-brief`);
   return response.data;
 };

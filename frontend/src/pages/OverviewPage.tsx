@@ -7,7 +7,8 @@ import {
 import { 
   Users, DollarSign, Wallet, Send, 
   TrendingUp, AlertCircle, Sparkles,
-  ArrowRight, ShieldAlert, Zap, ChevronRight
+  ArrowRight, ShieldAlert, Zap, ChevronRight,
+  LucideIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -17,10 +18,19 @@ import {
   getExecutiveBrief 
 } from '../services/brandService';
 import { Skeleton, KPICardSkeleton, ChartSkeleton, OpportunitySkeleton } from '../components/layout/Skeleton';
+import { BrandAnalytics, GrowthOpportunity } from '../types/intelligence';
+import { Campaign } from '../types/campaign';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-const KPICard = ({ title, value, icon: Icon, description }: any) => (
+interface KPICardProps {
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  description: string;
+}
+
+const KPICard = ({ title, value, icon: Icon, description }: KPICardProps) => (
   <div className="bg-white p-6 rounded-3xl border border-border shadow-sm">
     <div className="flex justify-between items-start mb-4">
       <div className="p-3 rounded-2xl bg-card-bg text-accent">
@@ -38,9 +48,9 @@ const KPICard = ({ title, value, icon: Icon, description }: any) => (
 
 const OverviewPage: React.FC = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState<any>(null);
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [data, setData] = useState<BrandAnalytics | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [opportunities, setOpportunities] = useState<GrowthOpportunity[]>([]);
   const [executiveBrief, setExecutiveBrief] = useState<string>('');
   const [loading, setLoading] = useState(true);
 

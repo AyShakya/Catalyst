@@ -11,10 +11,11 @@ import {
 import { motion } from 'framer-motion';
 import { getCampaigns } from '../services/brandService';
 import { Skeleton, KPICardSkeleton, ChartSkeleton } from '../components/layout/Skeleton';
+import { Campaign } from '../types/campaign';
 
 const AnalyticsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
