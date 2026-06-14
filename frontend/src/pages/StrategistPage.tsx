@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithStrategist, chatWithStrategistStream, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
+import { Skeleton } from '../components/layout/Skeleton';
 
 type Message = {
   role: 'USER' | 'ASSISTANT';
@@ -68,11 +69,13 @@ const StrategistPage: React.FC = () => {
       return;
     }
 
+    const controller = new AbortController();
+
     // Recover session from URL if provided (v2 support)
     const urlParams = new URLSearchParams(window.location.search);
     const sid = urlParams.get('session');
     if (sid) {
-      loadSession(sid);
+      loadSession(sid, controller.signal);
     } else {
       fetchActiveSessions(brandId);
     }
@@ -82,7 +85,9 @@ const StrategistPage: React.FC = () => {
     if (initialPrompt) {
       setInput(initialPrompt);
     }
-  }, []);
+
+    return () => controller.abort();
+  }, [navigate]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -101,21 +106,23 @@ const StrategistPage: React.FC = () => {
     }
   };
 
-  const loadSession = async (sid: string) => {
+  const loadSession = async (sid: string, signal?: AbortSignal) => {
     try {
       setIsLoading(true);
       const brandId = localStorage.getItem('catalyst_brand_id');
       if (!brandId) return;
 
       const res = await getStrategistSession(brandId, sid);
-      if (res.status === 'success') {
+      if (res.status === 'success' && !signal?.aborted) {
         setSessionId(sid);
         setMessages(res.data.history);
         setLatestDraft(res.data.latestDraft);
         setStatus(res.data.status);
       }
     } catch (err) {
-      console.error("Failed to load session:", err);
+      if ((err as any).name !== 'AbortError') {
+        console.error("Failed to load session:", err);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -157,15 +164,18 @@ const StrategistPage: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    // Strict prevention of concurrent sends
+    // 1. Immediate guard against concurrent clicks or empty input
     if (!input.trim() || isLoading || status === 'LAUNCHED') return;
+
+    // 2. Lock UI immediately
+    setIsLoading(true);
+    const controller = new AbortController();
 
     const brandId = localStorage.getItem('catalyst_brand_id')!;
     const userMsg = input.trim();
     setInput('');
-    setIsLoading(true);
 
-    // Optimistic UI: User message + empty Assistant message (thinking state)
+    // 3. Optimistic UI: Add user message + placeholder for assistant
     setMessages(prev => {
       const next = [...prev, 
         { role: 'USER', content: userMsg } as Message,
@@ -179,26 +189,19 @@ const StrategistPage: React.FC = () => {
       let streamedFinal: any = null;
 
       try {
+        // 4. Attempt streaming for fast perceived response
         streamedFinal = await chatWithStrategistStream(brandId, userMsg, sessionId || undefined, {
+          signal: controller.signal,
           onDelta: (delta) => {
             setMessages(prev => {
               const index = streamingAssistantIndexRef.current;
-              if (index === null || index < 0 || index >= prev.length) {
-                return prev;
-              }
+              if (index === null || index < 0 || index >= prev.length) return prev;
 
               const next = [...prev];
               const current = next[index];
+              if (!current || current.role !== 'ASSISTANT') return prev;
 
-              if (!current || current.role !== 'ASSISTANT') {
-                return prev;
-              }
-
-              next[index] = {
-                ...current,
-                content: `${current.content}${delta}`,
-              };
-
+              next[index] = { ...current, content: `${current.content}${delta}` };
               return next;
             });
           },
@@ -206,11 +209,16 @@ const StrategistPage: React.FC = () => {
             throw new Error(errorMessage);
           },
         });
-      } catch (streamError) {
+      } catch (streamError: any) {
+        // Ignore AbortErrors if the user navigated away
+        if (streamError.name === 'AbortError') return;
+
         console.warn("Streaming failed, falling back to polling", streamError);
-        const fallbackRes = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
+        
+        // 5. Fallback to standard polling if streaming fails (Robustness)
+        const fallbackRes = await chatWithStrategist(brandId, userMsg, sessionId || undefined, controller.signal);
         if (fallbackRes.status === 'success') {
-          if (!sessionId) {
+          if (!sessionId && fallbackRes.data.sessionId) {
             setSessionId(fallbackRes.data.sessionId);
             window.history.replaceState(null, '', `?session=${fallbackRes.data.sessionId}`);
           }
@@ -222,22 +230,20 @@ const StrategistPage: React.FC = () => {
         throw streamError;
       }
 
+      // 6. Finalize state from streaming response
       if (streamedFinal) {
         if (!sessionId && streamedFinal.sessionId) {
           setSessionId(streamedFinal.sessionId);
           window.history.replaceState(null, '', `?session=${streamedFinal.sessionId}`);
         }
 
-        // Only use history if the message content differs significantly (safety fallback)
+        // Only sync history if streaming content was partial or we need a hard sync
         if (Array.isArray(streamedFinal.history) && streamedFinal.history.length > 0) {
           setMessages(streamedFinal.history);
         } else if (typeof streamedFinal.message === 'string') {
           setMessages(prev => {
             const index = streamingAssistantIndexRef.current;
-            if (index === null || index < 0 || index >= prev.length) {
-              return prev;
-            }
-
+            if (index === null || index < 0 || index >= prev.length) return prev;
             const next = [...prev];
             next[index] = { ...next[index], content: streamedFinal.message };
             return next;
@@ -248,17 +254,25 @@ const StrategistPage: React.FC = () => {
           setLatestDraft(streamedFinal.draft);
         }
       }
-    } catch (err) {
-      console.error(err);
-      // Clean up the empty assistant bubble on error
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      console.error("Strategist chat error:", err);
+      
+      // 7. Graceful error state in the chat bubble
       setMessages(prev => {
         const next = [...prev];
         const index = streamingAssistantIndexRef.current;
         if (index !== null && index < next.length) {
-          next[index] = { role: 'ASSISTANT', content: "I encountered an error while analyzing your request. Please try again." } as Message;
+          next[index] = { 
+            role: 'ASSISTANT', 
+            content: "I encountered an error while analyzing your request. Please try again or refine your prompt." 
+          } as Message;
         }
         return next;
       });
+      
+      // Put the input back so the user doesn't lose it
+      setInput(userMsg);
     } finally {
       setIsLoading(false);
     }
@@ -374,7 +388,7 @@ const StrategistPage: React.FC = () => {
               </motion.div>
             )}
 
-            {messages.length === 0 && (
+            {messages.length === 0 && !isLoading && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -399,6 +413,23 @@ const StrategistPage: React.FC = () => {
                   ))}
                 </div>
               </motion.div>
+            )}
+
+            {messages.length === 0 && isLoading && (
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <Skeleton variant="circle" className="w-8 h-8" />
+                  <Skeleton className="h-20 w-3/4 rounded-2xl" />
+                </div>
+                <div className="flex gap-4 flex-row-reverse">
+                  <Skeleton variant="circle" className="w-8 h-8" />
+                  <Skeleton className="h-12 w-1/2 rounded-2xl" />
+                </div>
+                <div className="flex gap-4">
+                  <Skeleton variant="circle" className="w-8 h-8" />
+                  <Skeleton className="h-32 w-2/3 rounded-2xl" />
+                </div>
+              </div>
             )}
 
             
@@ -458,13 +489,13 @@ const StrategistPage: React.FC = () => {
       {/* Right Strategy Snapshot */}
       <div className="w-full xl:w-80 2xl:w-100 flex flex-col gap-6 h-auto xl:h-full min-w-0">
         <AnimatePresence mode="wait">
-          {latestDraft ? (
+          {latestDraft || isLoading ? (
             <motion.div 
-              key="draft"
+              key={isLoading ? "loading" : "draft"}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="flex-1 flex flex-col gap-6 xl:overflow-y-auto pr-0 xl:pr-2 scrollbar-hide pb-6 xl:pb-0"
+              className="flex-1 flex flex-col gap-6 xl:overflow-y-auto pr-0 xl:pr-3 pb-6 xl:pb-0"
             >
               {/* Audience Section */}
               <div className="bg-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl border border-border shadow-sm shrink-0">
@@ -472,55 +503,85 @@ const StrategistPage: React.FC = () => {
                   <Users size={18} className="text-accent shrink-0" />
                   <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Audience Discovery</h3>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end border-b border-border pb-4 gap-2">
-                    <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase truncate">Projected Reach</span>
-                    <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft.audience.size.toLocaleString()}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-card-bg rounded-2xl min-w-0">
-                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Avg Order</span>
-                      <span className="text-xs font-black truncate block">${Math.round(latestDraft.audience.avgOrderValue || (latestDraft.audience.avgSpend / 10))}</span>
+                {isLoading ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end border-b border-border pb-4">
+                      <Skeleton variant="text" className="w-20" />
+                      <Skeleton variant="text" className="w-16 h-8" />
                     </div>
-                    <div className="p-3 bg-card-bg rounded-2xl min-w-0">
-                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Churn Risk</span>
-                      <span className="text-xs font-black truncate block">{Math.round(latestDraft.audience.avgChurn)}%</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Skeleton className="h-16 rounded-2xl" />
+                      <Skeleton className="h-16 rounded-2xl" />
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end border-b border-border pb-4 gap-2">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase truncate">Projected Reach</span>
+                      <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft?.audience.size.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-card-bg rounded-2xl min-w-0">
+                        <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Avg Order</span>
+                        <span className="text-xs font-black truncate block">${Math.round(latestDraft?.audience.avgOrderValue || (latestDraft ? latestDraft.audience.avgSpend / 10 : 0))}</span>
+                      </div>
+                      <div className="p-3 bg-card-bg rounded-2xl min-w-0">
+                        <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Churn Risk</span>
+                        <span className="text-xs font-black truncate block">{Math.round(latestDraft?.audience.avgChurn || 0)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Strategy Card */}
-              <div className="bg-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl border border-border shadow-sm flex-1 min-h-[300px] flex flex-col shrink-0">
+              <div className="bg-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl border border-border shadow-sm flex-1 min-h-[300px] flex flex-col shrink-0 overflow-hidden">
                 <div className="flex items-center gap-2 mb-6 shrink-0">
                   <Target size={18} className="text-accent shrink-0" />
                   <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Campaign Strategy</h3>
                 </div>
-                <div className="space-y-6 flex-1 min-w-0">
-                  <div className="min-w-0">
-                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Campaign Name</span>
-                    <p className="text-sm font-black break-words line-clamp-2">{latestDraft.name}</p>
+                {isLoading ? (
+                  <div className="space-y-6 flex-1 pr-1">
+                    <div>
+                      <Skeleton variant="text" className="w-24 mb-2" />
+                      <Skeleton variant="text" className="w-full h-8" />
+                    </div>
+                    <div>
+                      <Skeleton variant="text" className="w-20 mb-2" />
+                      <Skeleton variant="text" className="w-full h-24" />
+                    </div>
+                    <div>
+                      <Skeleton variant="text" className="w-28 mb-2" />
+                      <Skeleton variant="text" className="w-full h-16 rounded-xl" />
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Reasoning</span>
-                    <p className="text-xs text-secondary leading-relaxed font-medium break-words overflow-hidden">
-                      {latestDraft.reasoning}
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Communication</span>
-                    <div className="p-3 bg-card-bg rounded-xl border border-border mt-1">
-                      <p className="text-[10px] sm:text-[11px] font-medium italic text-secondary leading-relaxed break-words overflow-hidden">
-                        "{latestDraft.message}"
+                ) : (
+                  <div className="space-y-6 flex-1 min-w-0 overflow-y-auto pr-1">
+                    <div className="min-w-0">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Campaign Name</span>
+                      <p className="text-sm font-black break-words">{latestDraft?.name}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Reasoning</span>
+                      <p className="text-xs text-secondary leading-relaxed font-medium break-words">
+                        {latestDraft?.reasoning}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <span className="px-2 py-1 bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest rounded-md shrink-0">
-                        {latestDraft.channel}
-                      </span>
+                    <div className="min-w-0">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Communication</span>
+                      <div className="p-3 bg-card-bg rounded-xl border border-border mt-1">
+                        <p className="text-[10px] sm:text-[11px] font-medium italic text-secondary leading-relaxed break-words">
+                          "{latestDraft?.message}"
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <span className="px-2 py-1 bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest rounded-md shrink-0">
+                          {latestDraft?.channel}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Action Section */}
@@ -528,7 +589,11 @@ const StrategistPage: React.FC = () => {
                 <BarChart3 className="absolute -bottom-4 -right-4 w-16 h-16 sm:w-20 sm:h-20 opacity-10" />
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
                 <div className="flex justify-between items-end mb-8 gap-2">
-                  <span className="text-xl sm:text-2xl font-black text-success shrink-0">${latestDraft.forecast.revenue.toLocaleString()}</span>
+                  {isLoading ? (
+                    <Skeleton className="bg-white/10 w-24 h-8" />
+                  ) : (
+                    <span className="text-xl sm:text-2xl font-black text-success shrink-0">${latestDraft?.forecast.revenue.toLocaleString() || '0'}</span>
+                  )}
                   <span className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest text-right">Expected Lift</span>
                 </div>
                 {status === 'LAUNCHED' ? (
@@ -541,7 +606,7 @@ const StrategistPage: React.FC = () => {
                 ) : (
                   <button 
                     onClick={handleLaunch}
-                    disabled={isLaunching}
+                    disabled={isLaunching || isLoading}
                     className="w-full py-3.5 sm:py-4 bg-accent text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                   >
                     {isLaunching ? <Loader2 size={16} className="animate-spin" /> : <>Launch Campaign <Rocket size={16} /></>}

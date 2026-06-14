@@ -13,7 +13,4 @@ Work -
 13. Mis click deleting campaign, or cancelling it mid way.
 
 # Frontend
-1. Forecast engine why it is not working
 2. Why only 1 value in forecast engine, finding what are the values, being used to reflect in frontend and the stats and graphs. To see how many are remaining.
-3. The cards of campaign when overload with data should be have proper scroll.
-4. Why going back to overview and analytics page takes loading time so much? it shouldnt? the values are pre computed maybe adding skeleton bodies.

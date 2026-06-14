@@ -58,8 +58,8 @@ export const getExecutiveBrief = async (brandId: string) => {
   return response.data;
 };
 
-export const chatWithStrategist = async (brandId: string, message: string, sessionId?: string) => {
-  const response = await axios.post(`${API_URL}/intelligence/${brandId}/strategist/chat`, { message, sessionId });
+export const chatWithStrategist = async (brandId: string, message: string, sessionId?: string, signal?: AbortSignal) => {
+  const response = await axios.post(`${API_URL}/intelligence/${brandId}/strategist/chat`, { message, sessionId }, { signal });
   return response.data;
 };
 
@@ -68,6 +68,7 @@ type StrategistStreamHandlers = {
   onProcessing?: (data: any) => void;
   onFinal?: (payload: any) => void;
   onError?: (error: string) => void;
+  signal?: AbortSignal;
 };
 
 export const chatWithStrategistStream = async (
@@ -83,6 +84,7 @@ export const chatWithStrategistStream = async (
       Accept: 'text/event-stream',
     },
     body: JSON.stringify({ message, sessionId }),
+    signal: handlers.signal,
   });
 
   if (!response.ok || !response.body) {

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getCampaigns } from '../services/brandService';
+import { CampaignCardSkeleton } from '../components/layout/Skeleton';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,14 +34,6 @@ const CampaignsPage: React.FC = () => {
     fetchCampaigns();
   }, [navigate]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[80vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 sm:pb-20">
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-6 sm:gap-4">
@@ -56,7 +49,13 @@ const CampaignsPage: React.FC = () => {
         </button>
       </div>
 
-      {campaigns.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <CampaignCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : campaigns.length === 0 ? (
         <div className="bg-white border border-border rounded-[30px] sm:rounded-[40px] p-8 sm:p-20 text-center">
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-card-bg text-secondary rounded-full flex items-center justify-center mx-auto mb-6">
             <Send size={28} className="sm:size-32" />
