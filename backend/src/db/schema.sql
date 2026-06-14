@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   forecast_opened INTEGER,
   forecast_clicked INTEGER,
   forecast_purchased INTEGER,
+  filter_plan JSONB,
   session_id UUID REFERENCES strategist_sessions(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -135,7 +136,7 @@ CREATE TABLE IF NOT EXISTS communications (
   campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
   customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
   channel TEXT,
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'FAILED')),
+  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'PURCHASED', 'FAILED')),
   sent_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -143,7 +144,7 @@ CREATE TABLE IF NOT EXISTS communications (
 CREATE TABLE IF NOT EXISTS communication_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   communication_id UUID NOT NULL REFERENCES communications(id) ON DELETE CASCADE,
-  event_type TEXT NOT NULL CHECK (event_type IN ('SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'FAILED')),
+  event_type TEXT NOT NULL CHECK (event_type IN ('SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'PURCHASED', 'FAILED')),
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   payload JSONB
 );

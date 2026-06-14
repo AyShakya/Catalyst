@@ -80,17 +80,24 @@ class AIService {
 
   _parseJsonObject(content) {
     try {
-      const parsed = JSON.parse(content);
+      // Clean up markdown code blocks if present
+      const cleaned = content.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new Error("AI response must be a JSON object");
       }
       return parsed;
     } catch (error) {
+      // Fallback: search for the largest JSON-like structure
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw error;
       }
-      return JSON.parse(jsonMatch[0]);
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (innerError) {
+        throw error;
+      }
     }
   }
 }

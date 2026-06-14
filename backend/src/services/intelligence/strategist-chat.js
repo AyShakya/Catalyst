@@ -240,7 +240,7 @@ class StrategistChatService {
       draft.forecast.opened,
       draft.forecast.clicked,
       draft.forecast.conversions,
-      JSON.stringify(draft.segment_name ? { segment_name: draft.segment_name } : { filters: draft.filters }),
+      JSON.stringify(draft.segment_name ? { logic: 'SEGMENT', segment_name: draft.segment_name } : { filters: draft.filters }),
       sessionId
     ]);
 

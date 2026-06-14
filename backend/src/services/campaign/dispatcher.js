@@ -99,7 +99,13 @@ async function processDispatch(campaign, comm) {
 function renderTemplate(template, data) {
   if (!template) return "";
   return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    return data[key] !== undefined ? data[key] : match;
+    const value = data[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+    // Simple fallbacks for common marketing fields
+    if (key === 'name') return "valued customer";
+    return match; // Keep the placeholder if no logic applies
   });
 }
 

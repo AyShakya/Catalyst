@@ -48,7 +48,7 @@ async function handleWebhookEvent(req, res) {
 
     // Update status only if it's a "forward" transition (simplified logic)
     // E.g. don't update to DELIVERED if already OPENED
-    const statusPriority = { 'SENT': 1, 'DELIVERED': 2, 'OPENED': 3, 'CLICKED': 4, 'FAILED': 0 };
+    const statusPriority = { 'SENT': 1, 'DELIVERED': 2, 'OPENED': 3, 'CLICKED': 4, 'PURCHASED': 5, 'FAILED': 0 };
     const currentPriority = statusPriority[comm.status] || 0;
     const incomingPriority = statusPriority[event] || 0;
 
