@@ -6,6 +6,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCampaignDetails, getCampaignMetrics, getCampaignMilestones } from '../services/brandService';
+import { 
+  Skeleton, FunnelSkeleton, ComparisonSkeleton, 
+  OpportunitySkeleton 
+} from '../components/layout/Skeleton';
+
+import CampaignFunnel from '../components/charts/CampaignFunnel';
+import ForecastComparison from '../components/charts/ForecastComparison';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -40,8 +47,52 @@ const CampaignDetailsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+      <div className="space-y-8 pb-20">
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-32 h-4" />
+        </div>
+        
+        <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-24 h-3" />
+            <Skeleton className="w-64 h-10" />
+          </div>
+          <Skeleton className="w-32 h-10 rounded-2xl" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white p-8 rounded-3xl border border-border shadow-sm space-y-6">
+              <Skeleton className="w-40 h-6" />
+              <div className="space-y-4">
+                <Skeleton className="w-full h-12" />
+                <Skeleton className="w-full h-24" />
+                <Skeleton className="w-full h-16 rounded-2xl" />
+              </div>
+            </div>
+            <div className="bg-white p-10 rounded-[48px] border border-border shadow-sm space-y-8">
+              <Skeleton className="w-48 h-6" />
+              <FunnelSkeleton />
+            </div>
+          </div>
+          <div className="space-y-8">
+            <div className="bg-white p-8 rounded-3xl border border-border shadow-sm space-y-6">
+              <Skeleton className="w-32 h-6" />
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-20 rounded-2xl" />
+                <Skeleton className="h-20 rounded-2xl" />
+              </div>
+            </div>
+            <div className="bg-foreground p-8 rounded-3xl shadow-xl space-y-8">
+              <Skeleton className="bg-white/10 w-40 h-6" />
+              <div className="space-y-6">
+                <Skeleton className="bg-white/10 h-12" />
+                <Skeleton className="bg-white/10 h-12" />
+                <Skeleton className="bg-white/10 h-12" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -54,14 +105,6 @@ const CampaignDetailsPage: React.FC = () => {
       </div>
     );
   }
-
-  const funnelSteps = [
-    { label: 'Audience', value: campaign.audience_size, color: '#4f46e5' },
-    { label: 'Delivered', value: metrics?.total_delivered || campaign.forecast_delivered || 0, color: '#6366f1' },
-    { label: 'Opened', value: metrics?.total_opened || campaign.forecast_opened || 0, color: '#818cf8' },
-    { label: 'Clicked', value: metrics?.total_clicked || campaign.forecast_clicked || 0, color: '#a5b4fc' },
-    { label: 'Conversions', value: campaign.forecast_purchased || 0, color: '#10b981' },
-  ];
 
   return (
     <div className="space-y-8 pb-20">
@@ -147,31 +190,47 @@ const CampaignDetailsPage: React.FC = () => {
           )}
 
           {/* Performance Funnel */}
-          <div className="bg-white p-5 sm:p-8 rounded-3xl border border-border shadow-sm">
-            <h3 className="text-sm font-black uppercase tracking-widest mb-10">Engagement Funnel</h3>
-            <div className="space-y-4">
-              {funnelSteps.map((step, i) => {
-                const percentage = i === 0 ? 100 : (step.value / Math.max(funnelSteps[0].value, 1)) * 100;
-                return (
-                  <div key={step.label} className="relative">
-                    <div className="flex justify-between items-center mb-1 px-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-secondary">{step.label}</span>
-                      <span className="text-xs font-black">{step.value?.toLocaleString()}</span>
-                    </div>
-                    <div className="h-10 w-full bg-card-bg rounded-xl overflow-hidden flex">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, Math.max(percentage, 0.5))}%` }}
-                        transition={{ duration: 1, delay: i * 0.1 }}
-                        className="h-full flex items-center px-4"
-                        style={{ backgroundColor: step.color }}
-                      >
-                        {percentage > 5 && <span className="text-[10px] font-black text-white">{Math.round(percentage)}%</span>}
-                      </motion.div>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="bg-white p-6 sm:p-10 rounded-[32px] sm:rounded-[48px] border border-border shadow-sm">
+            <div className="flex justify-between items-center mb-10">
+              <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                <BarChart3 size={18} className="text-accent" /> Conversion Journey
+              </h3>
+              <div className="text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg">Real-time Performance</div>
+            </div>
+            <CampaignFunnel 
+              sent={campaign.audience_size}
+              delivered={metrics?.total_delivered || 0}
+              opened={metrics?.total_opened || 0}
+              clicked={metrics?.total_clicked || 0}
+              purchased={metrics?.total_purchased || 0}
+            />
+          </div>
+
+          {/* Forecast vs Actual */}
+          <div className="bg-white p-6 sm:p-10 rounded-[32px] border border-border shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                  <Zap size={18} className="text-accent" /> AI Modeling Precision
+                </h3>
+                <p className="text-[10px] text-secondary font-bold uppercase mt-1">Forecast vs Real-world Result</p>
+              </div>
+            </div>
+            <div className="h-80 w-full">
+              <ForecastComparison 
+                forecast={{
+                  delivered: campaign.forecast_delivered || 0,
+                  opened: campaign.forecast_opened || 0,
+                  clicked: campaign.forecast_clicked || 0,
+                  conversions: campaign.forecast_purchased || 0
+                }}
+                actual={{
+                  delivered: metrics?.total_delivered || 0,
+                  opened: metrics?.total_opened || 0,
+                  clicked: metrics?.total_clicked || 0,
+                  conversions: metrics?.total_purchased || 0
+                }}
+              />
             </div>
           </div>
         </div>

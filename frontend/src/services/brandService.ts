@@ -223,3 +223,13 @@ export const executeCampaign = async (campaignId: string) => {
   const response = await axios.post(`${API_URL}/campaigns/${campaignId}/execute`);
   return response.data;
 };
+
+export const getHealthMatrix = async (brandId: string): Promise<ApiResponse<any[]>> => {
+  const response = await axios.get(`${API_URL}/metrics/brands/${brandId}/health-matrix`);
+  return response.data;
+};
+
+export const getValuePyramid = async (brandId: string): Promise<ApiResponse<any[]>> => {
+  const response = await axios.get(`${API_URL}/metrics/brands/${brandId}/value-pyramid`);
+  return response.data;
+};

@@ -15,34 +15,37 @@ import {
   getBrandAnalytics, 
   getCampaigns, 
   getOpportunityFeed, 
-  getExecutiveBrief 
+  getExecutiveBrief,
+  getHealthMatrix,
+  getValuePyramid
 } from '../services/brandService';
-import { Skeleton, KPICardSkeleton, ChartSkeleton, OpportunitySkeleton } from '../components/layout/Skeleton';
-import { BrandAnalytics, GrowthOpportunity } from '../types/intelligence';
+import { 
+  Skeleton, KPICardSkeleton, ChartSkeleton, OpportunitySkeleton, 
+  MatrixSkeleton, DonutSkeleton, PyramidSkeleton 
+} from '../components/layout/Skeleton';
+import { BrandAnalytics, GrowthOpportunity, HealthMatrixPoint, ValuePyramidTier } from '../types/intelligence';
 import { Campaign } from '../types/campaign';
+import CustomerHealthMatrix from '../components/charts/CustomerHealthMatrix';
+import RevenueDonut from '../components/charts/RevenueDonut';
+import ValuePyramid from '../components/charts/ValuePyramid';
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-interface KPICardProps {
-  title: string;
-  value: string;
-  icon: LucideIcon;
-  description: string;
-}
-
-const KPICard = ({ title, value, icon: Icon, description }: KPICardProps) => (
-  <div className="bg-white p-6 rounded-3xl border border-border shadow-sm">
-    <div className="flex justify-between items-start mb-4">
-      <div className="p-3 rounded-2xl bg-card-bg text-accent">
+const KPICard = ({ title, value, icon: Icon, description, detail }: { title: string; value: string; icon: LucideIcon; description: string; detail?: string }) => (
+  <div className="bg-white p-6 rounded-3xl border border-border shadow-sm group hover:border-accent transition-all relative overflow-hidden">
+    <div className="flex justify-between items-start mb-4 relative z-10">
+      <div className="p-3 rounded-2xl bg-card-bg text-accent group-hover:bg-accent group-hover:text-white transition-colors">
         <Icon size={24} />
       </div>
-      <div className="text-xs font-black text-success bg-success/10 px-2 py-1 rounded-lg flex items-center gap-1 uppercase tracking-wider">
+      <div className="text-[10px] font-black text-success bg-success/10 px-2 py-1 rounded-lg flex items-center gap-1 uppercase tracking-wider">
         <TrendingUp size={12} /> +12%
       </div>
     </div>
-    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-secondary mb-1">{title}</h3>
-    <p className="text-3xl font-black">{value}</p>
-    <p className="text-xs text-secondary mt-2 font-medium">{description}</p>
+    <div className="relative z-10">
+      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-1">{title}</h3>
+      <p className="text-3xl font-black">{value}</p>
+      <p className="text-[11px] text-secondary mt-2 font-medium">{description}</p>
+      {detail && <div className="mt-3 pt-3 border-t border-border/50 text-[10px] font-bold text-accent uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">{detail}</div>}
+    </div>
+    <Icon className="absolute -bottom-6 -right-6 w-24 h-24 text-secondary/5 group-hover:text-accent/5 transition-colors" />
   </div>
 );
 
@@ -52,6 +55,8 @@ const OverviewPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [opportunities, setOpportunities] = useState<GrowthOpportunity[]>([]);
   const [executiveBrief, setExecutiveBrief] = useState<string>('');
+  const [healthMatrix, setHealthMatrix] = useState<HealthMatrixPoint[]>([]);
+  const [valuePyramid, setValuePyramid] = useState<ValuePyramidTier[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,16 +68,20 @@ const OverviewPage: React.FC = () => {
 
     const fetchData = async () => {
       try {
-        const [analyticsRes, campaignsRes, oppsRes, briefRes] = await Promise.all([
+        const [analyticsRes, campaignsRes, oppsRes, briefRes, healthRes, pyramidRes] = await Promise.all([
           getBrandAnalytics(brandId),
           getCampaigns(brandId),
           getOpportunityFeed(brandId),
-          getExecutiveBrief(brandId)
+          getExecutiveBrief(brandId),
+          getHealthMatrix(brandId),
+          getValuePyramid(brandId)
         ]);
         setData(analyticsRes.data);
         setCampaigns(campaignsRes.data || []);
         setOpportunities(oppsRes.data || []);
         setExecutiveBrief(briefRes.data?.brief || '');
+        setHealthMatrix(healthRes.data || []);
+        setValuePyramid(pyramidRes.data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -192,102 +201,208 @@ const OverviewPage: React.FC = () => {
               value={summary?.total_customers?.toLocaleString() || '0'} 
               icon={Users}
               description="Unique customer base size"
+              detail={`Avg ${summary?.avg_orders_per_customer || '0'} orders / user`}
             />
             <KPICard 
               title="Total Revenue" 
               value={`$${summary?.total_revenue?.toLocaleString() || '0'}`} 
               icon={DollarSign}
               description="Aggregate lifetime value"
+              detail={`$${summary?.median_spend || '0'} median spend`}
             />
             <KPICard 
               title="Avg Customer Spend" 
               value={`$${Math.round(summary?.avg_order_value || 0)}`} 
               icon={Wallet}
               description="Average spend per transaction"
+              detail={`$${summary?.p90_spend || '0'} top 10% threshold`}
             />
             <KPICard 
-              title="Campaign Success" 
-              value={`${campaigns.length > 0 ? '84%' : '0%'}`} 
-              icon={Send}
-              description="Performance efficiency"
+              title="Brand Health" 
+              value={`${Math.round(100 - (summary?.avg_churn_score || 0))}%`} 
+              icon={Target}
+              description="Overall retention stability"
+              detail={`${Math.round(summary?.avg_loyalty_score || 0)}/100 loyalty index`}
             />
           </>
         )}
       </div>
 
-      {/* Charts & Distributions */}
+      {/* Primary Analytics Layer */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        <div className="lg:col-span-2 min-w-0 w-full overflow-hidden">
+        {/* Customer Health Matrix */}
+        <div className="lg:col-span-2">
+          {loading ? (
+            <div className="bg-white p-6 sm:p-8 rounded-[32px] sm:rounded-[48px] border border-border shadow-sm">
+              <div className="flex justify-between items-center mb-8">
+                <Skeleton variant="text" className="w-48" />
+                <div className="flex gap-2">
+                  <Skeleton className="w-12 h-6" />
+                  <Skeleton className="w-12 h-6" />
+                </div>
+              </div>
+              <MatrixSkeleton />
+              <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-6 sm:p-8 rounded-[32px] sm:rounded-[48px] border border-border shadow-sm">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+                    <Target size={14} className="text-accent" /> Customer Health Matrix
+                  </h3>
+                  <p className="text-[10px] text-secondary font-bold uppercase mt-1">Loyalty vs Churn Risk Analysis</p>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5 bg-card-bg px-2 py-1 rounded-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-secondary">VIP</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-card-bg px-2 py-1 rounded-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-error" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-secondary">At Risk</span>
+                  </div>
+                </div>
+              </div>
+              <div className="h-80 sm:h-96 w-full">
+                <CustomerHealthMatrix data={healthMatrix} />
+              </div>
+              <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                  <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Loyalty</span>
+                  <span className="text-sm font-black">{Math.round(summary?.avg_loyalty_score || 0)}/100</span>
+                </div>
+                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                  <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Churn</span>
+                  <span className="text-sm font-black">{Math.round(summary?.avg_churn_score || 0)}%</span>
+                </div>
+                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                  <span className="text-[8px] font-black text-secondary uppercase block mb-1">Inactive Interval</span>
+                  <span className="text-sm font-black">{Math.round(summary?.avg_days_since_purchase || 0)} days</span>
+                </div>
+                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                  <span className="text-[8px] font-black text-secondary uppercase block mb-1">Max LTV</span>
+                  <span className="text-sm font-black text-accent">${Math.round(summary?.p95_spend || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Revenue Donut */}
+        <div className="space-y-6 lg:space-y-8">
           {loading ? (
             <ChartSkeleton />
           ) : (
-            <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-4xl border border-border shadow-sm min-w-0">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6 sm:mb-10">
-                <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-secondary">Revenue Distribution</h3>
-                <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg w-fit shrink-0">LTV Segmentation</span>
+            <div className="bg-white p-6 sm:p-8 rounded-[32px] sm:rounded-[48px] border border-border shadow-sm h-full flex flex-col">
+              <h3 className="text-xs font-black uppercase tracking-widest text-secondary flex items-center gap-2 mb-8">
+                <DollarSign size={14} className="text-accent" /> Revenue DNA
+              </h3>
+              <div className="flex-1 min-h-[300px]">
+                <RevenueDonut data={distributions?.total_spend || []} />
               </div>
-              <div className="h-64 sm:h-80 min-w-0 w-full overflow-hidden">
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Secondary Analytics Layer */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* Value Pyramid */}
+        <div className="lg:col-span-1">
+          {loading ? (
+            <ChartSkeleton />
+          ) : (
+            <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-border shadow-sm h-full flex flex-col">
+              <h3 className="text-xs font-black uppercase tracking-widest text-secondary flex items-center gap-2 mb-6">
+                <TrendingUp size={14} className="text-accent" /> Spend Benchmarks
+              </h3>
+              <div className="flex-1 flex items-center">
+                <ValuePyramid data={valuePyramid} />
+              </div>
+              <p className="text-[10px] text-secondary font-medium italic mt-6 leading-relaxed">
+                Percentile distribution of customer lifetime value across your entire database.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Opportunity Feed / Activity Charts */}
+        <div className="lg:col-span-2">
+          {loading ? (
+            <ChartSkeleton />
+          ) : (
+            <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-border shadow-sm h-full overflow-hidden">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-8">
+                <h3 className="text-xs font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+                  <BarChart3 size={14} className="text-accent" /> Recency Distribution
+                </h3>
+                <span className="text-[9px] font-black text-secondary uppercase bg-card-bg px-2 py-1 rounded-lg">Days since last purchase</span>
+              </div>
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={distributions?.total_spend || []} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#525252' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#525252' }} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} />
-                    <Bar dataKey="count" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={Math.min(40, 100 / (distributions?.total_spend?.length || 1))} />
+                  <BarChart data={distributions?.days_since_last_purchase || []} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '12px' }} />
+                    <Bar dataKey="count" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           )}
         </div>
+      </div>
 
-        <div className="space-y-6 sm:space-y-8 min-w-0">
-          <div className="bg-white p-6 sm:p-8 rounded-3xl sm:rounded-4xl border border-border shadow-sm min-w-0">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-8">Loyalty DNA</h3>
-            <div className="h-56 sm:h-64 min-w-0 w-full">
-              {loading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Skeleton variant="circle" className="w-40 h-40" />
+      {/* V2: Opportunity Feed */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[9px] sm:text-[10px] font-black text-secondary uppercase tracking-[0.3em] shrink-0">Strategic Opportunities</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          {loading ? (
+            <>
+              <OpportunitySkeleton />
+              <OpportunitySkeleton />
+              <OpportunitySkeleton />
+            </>
+          ) : (
+            opportunities.slice(0, 3).map((opp, i) => (
+              <motion.div 
+                key={opp.id}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-white p-5 sm:p-6 rounded-3xl border border-border shadow-sm flex flex-col justify-between group hover:border-accent hover:shadow-lg transition-all min-w-0"
+              >
+                <div className="min-w-0">
+                  <div className="flex justify-between items-start mb-4 gap-2">
+                    <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md shrink-0 ${
+                      opp.severity === 'CRITICAL' ? 'bg-error/10 text-error' : 
+                      opp.severity === 'HIGH' ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent'
+                    }`}>
+                      {opp.severity} Impact
+                    </span>
+                    <ShieldAlert size={16} className="text-border group-hover:text-accent transition-colors shrink-0" />
+                  </div>
+                  <h4 className="text-sm font-black uppercase tracking-tight mb-2 leading-snug break-words line-clamp-2">{opp.title}</h4>
+                  <p className="text-[11px] sm:text-xs text-secondary font-medium leading-relaxed mb-6 break-words line-clamp-3">{opp.description}</p>
                 </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={distributions?.loyalty_score || []}
-                      cx="50%" cy="50%"
-                      innerRadius={60} outerRadius={80}
-                      paddingAngle={8} dataKey="count"
-                    >
-                      {(distributions?.loyalty_score || []).map((_: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-          <div className="bg-foreground text-white p-6 sm:p-8 rounded-3xl sm:rounded-4xl shadow-xl relative overflow-hidden group">
-            <div className="relative z-10">
-              <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-6">Retention Pulse</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] sm:text-xs font-bold opacity-60">High Risk</span>
-                  {loading ? <Skeleton className="bg-white/10 w-12 h-4" /> : <span className="text-xs sm:text-sm font-black text-error">12.4%</span>}
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] sm:text-xs font-bold opacity-60">Healthy</span>
-                  {loading ? <Skeleton className="bg-white/10 w-12 h-4" /> : <span className="text-xs sm:text-sm font-black text-success">68.2%</span>}
-                </div>
-                <div className="pt-4 border-t border-white/10 mt-4 flex justify-between items-center cursor-pointer group/btn" onClick={() => navigate('/workspace/strategist?prompt=Improve+customer+retention')}>
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-accent">Optimize Retention</span>
-                  <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform shrink-0" />
-                </div>
-              </div>
-            </div>
-            <Zap className="absolute -bottom-6 -right-6 w-24 h-24 opacity-5 rotate-12" />
-          </div>
+                <button 
+                  onClick={() => navigate(`/workspace/strategist?prompt=${encodeURIComponent(opp.title)}`)}
+                  className="flex items-center justify-between w-full p-3.5 sm:p-4 bg-card-bg rounded-2xl group-hover:bg-accent group-hover:text-white transition-all shrink-0"
+                >
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Execute Strategy</span>
+                  <ArrowRight size={14} className="shrink-0" />
+                </button>
+              </motion.div>
+            ))
+          )}
         </div>
       </div>
     </div>

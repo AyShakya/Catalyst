@@ -506,16 +506,24 @@ const StrategistPage: React.FC = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-end border-b border-border pb-4 gap-2">
                       <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase truncate">Projected Reach</span>
-                      <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft?.audience.audience_size.toLocaleString() || '0'}</span>
+                      <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft?.audience.size.toLocaleString() || '0'}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 bg-card-bg rounded-2xl min-w-0">
                         <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Avg Order</span>
-                        <span className="text-xs font-black truncate block">${Math.round(latestDraft?.audience.avg_order_value || (latestDraft ? latestDraft.audience.avg_spend / 10 : 0))}</span>
+                        <span className="text-xs font-black truncate block">${Math.round(latestDraft?.audience.avgOrderValue || (latestDraft ? latestDraft.audience.avgSpend / 10 : 0))}</span>
+                      </div>
+                      <div className="p-3 bg-card-bg rounded-2xl min-w-0 border border-success/10">
+                        <span className="text-[8px] font-black text-success uppercase block mb-1 truncate">Loyalty DNA</span>
+                        <span className="text-xs font-black truncate block">{Math.round(latestDraft?.audience.avgLoyalty || 0)}/100</span>
                       </div>
                       <div className="p-3 bg-card-bg rounded-2xl min-w-0">
-                        <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Churn Risk</span>
-                        <span className="text-xs font-black truncate block">{Math.round(latestDraft?.audience.avg_churn || 0)}%</span>
+                        <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Avg LTV</span>
+                        <span className="text-xs font-black truncate block">${Math.round(latestDraft?.audience.avgSpend || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="p-3 bg-card-bg rounded-2xl min-w-0 border border-error/10">
+                        <span className="text-[8px] font-black text-error uppercase block mb-1 truncate">Churn Risk</span>
+                        <span className="text-xs font-black truncate block text-error">{Math.round(latestDraft?.audience.avgChurn || 0)}%</span>
                       </div>
                     </div>
                   </div>
@@ -576,14 +584,40 @@ const StrategistPage: React.FC = () => {
               <div className="bg-foreground text-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl shadow-xl relative overflow-hidden shrink-0 mt-auto">
                 <BarChart3 className="absolute -bottom-4 -right-4 w-16 h-16 sm:w-20 sm:h-20 opacity-10" />
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
-                <div className="flex justify-between items-end mb-8 gap-2">
-                  {isLoading ? (
+                
+                {isLoading ? (
+                  <div className="space-y-4 mb-8">
                     <Skeleton className="bg-white/10 w-24 h-8" />
-                  ) : (
-                    <span className="text-xl sm:text-2xl font-black text-success shrink-0">${latestDraft?.forecast.revenue.toLocaleString() || '0'}</span>
-                  )}
-                  <span className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest text-right">Expected Lift</span>
-                </div>
+                    <Skeleton className="bg-white/10 w-full h-12" />
+                  </div>
+                ) : (
+                  <div className="space-y-6 mb-8">
+                    <div className="flex justify-between items-end gap-2">
+                      <span className="text-xl sm:text-2xl font-black text-success shrink-0">${latestDraft?.forecast.revenue.toLocaleString() || '0'}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest text-right">Estimated Yield</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3 pt-4 border-t border-white/10">
+                      <div className="flex justify-between items-center group">
+                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest group-hover:text-white/60 transition-colors">Delivered</span>
+                        <span className="text-[10px] font-black">{latestDraft?.forecast.delivered.toLocaleString() || '0'}</span>
+                      </div>
+                      <div className="flex justify-between items-center group">
+                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest group-hover:text-white/60 transition-colors">Opened</span>
+                        <span className="text-[10px] font-black">{latestDraft?.forecast.opened.toLocaleString() || '0'}</span>
+                      </div>
+                      <div className="flex justify-between items-center group">
+                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest group-hover:text-white/60 transition-colors">Clicked</span>
+                        <span className="text-[10px] font-black">{latestDraft?.forecast.clicked.toLocaleString() || '0'}</span>
+                      </div>
+                      <div className="flex justify-between items-center group">
+                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest group-hover:text-white/60 transition-colors">Conv.</span>
+                        <span className="text-[10px] font-black text-success">{latestDraft?.forecast.conversions.toLocaleString() || '0'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {status === 'LAUNCHED' ? (
                   <button 
                     onClick={() => navigate('/workspace/campaigns')}

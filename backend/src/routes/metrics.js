@@ -4,8 +4,12 @@ const {
   regenerateMetrics,
   getMetricsJobHistory,
 } = require("../services/analytics/metrics-generator");
+const { getHealthMatrix, getValuePyramid } = require("../controllers/metrics-controller");
 
 const router = express.Router();
+
+router.get("/brands/:brandId/health-matrix", getHealthMatrix);
+router.get("/brands/:brandId/value-pyramid", getValuePyramid);
 
 router.post("/rebuild", async (req, res) => {
   try {

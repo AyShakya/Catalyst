@@ -95,3 +95,79 @@ export const OpportunitySkeleton = () => (
     <Skeleton className="w-full h-12 rounded-2xl" />
   </div>
 );
+
+export const MatrixSkeleton = () => (
+  <div className="w-full h-full min-h-[350px] relative overflow-hidden">
+    <Skeleton className="absolute inset-0" />
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="grid grid-cols-5 grid-rows-5 gap-4 w-3/4 h-3/4">
+        {[...Array(10)].map((_, i) => (
+          <Skeleton 
+            key={i} 
+            variant="circle" 
+            className="w-4 h-4 opacity-50" 
+            style={{ 
+              gridColumn: Math.floor(Math.random() * 5) + 1,
+              gridRow: Math.floor(Math.random() * 5) + 1
+            }} 
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+export const DonutSkeleton = () => (
+  <div className="w-full h-full flex items-center justify-center min-h-[300px]">
+    <div className="relative">
+      <Skeleton variant="circle" className="w-48 h-48 sm:w-56 sm:h-56" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-24 h-24 sm:w-28 sm:h-28 bg-white rounded-full" />
+      </div>
+    </div>
+  </div>
+);
+
+export const PyramidSkeleton = () => (
+  <div className="space-y-3 w-full">
+    {[...Array(5)].map((_, i) => (
+      <Skeleton 
+        key={i} 
+        className="h-12" 
+        style={{ width: `${100 - i * 15}%` }} 
+      />
+    ))}
+  </div>
+);
+
+export const FunnelSkeleton = () => (
+  <div className="space-y-6 w-full">
+    {[...Array(5)].map((_, i) => (
+      <div key={i} className="space-y-2">
+        <div className="flex justify-between">
+          <Skeleton variant="text" className="w-16" />
+          <Skeleton variant="text" className="w-12" />
+        </div>
+        <Skeleton className="h-3 w-full" />
+      </div>
+    ))}
+  </div>
+);
+
+export const ComparisonSkeleton = () => (
+  <div className="w-full h-full flex flex-col justify-end gap-6 min-h-[300px] pt-10">
+    <div className="flex items-end justify-around h-full gap-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="flex-1 flex items-end gap-2 max-w-[80px]">
+          <Skeleton className="flex-1 h-3/4" />
+          <Skeleton className="flex-1 h-1/2" />
+        </div>
+      ))}
+    </div>
+    <div className="flex justify-around">
+      {[...Array(4)].map((_, i) => (
+        <Skeleton key={i} variant="text" className="w-12" />
+      ))}
+    </div>
+  </div>
+);
