@@ -59,6 +59,6 @@ const ForecastComparison: React.FC<ForecastComparisonProps> = React.memo(({ fore
       </ResponsiveContainer>
     </div>
   );
-};
+});
 
 export default ForecastComparison;

@@ -51,6 +51,6 @@ const RevenueDonut: React.FC<RevenueDonutProps> = React.memo(({ data }) => {
       </ResponsiveContainer>
     </div>
   );
-};
+});
 
 export default RevenueDonut;

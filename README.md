@@ -6,9 +6,21 @@ Work -
 6. Something about continous customer and order data from marketer, because in real time it will not be one time data, it will also keep updating with time.
 9. Right now the campaign history feature is very rigid and not strong, need to fix that, make it more dynamic and robust.
 10. Security against infinite chatting and draft creation.
-
-- Complete debugging and optimization analyses.
-
+11. Button for re calculation of customer_metrics, and other metrics.
+12. Idempotency Keys: The CRM handles duplicate events, but the Channel Service doesn't send an event_id.
+       * Suggestion: Generate a unique event_id in the Channel Service and use it as a Natural Key in the CRM's communication_events table to ensure strict idempotency.
+13. Use more react.memo in chart data to prevent unwanted re-renders.
+14. Webhook is open to everyone, an webhook secuity with signature signoff.
+15. Batch dispatching from crm and also batch sending events from the channel_service.
+16. Improved prop drilling with incremental loading in frontend with so many data fields and chart.
+17. Using something like redux for state management because there is a lot to handle.
+18. In-Memory Lifecycle: The simulation uses nested setTimeout.
+       * Risk: If the service crashes, all "scheduled" events (DELIVERED, OPENED, etc.) for messages currently in flight are lost forever.
+       * Suggestion: Use a persistent event queue (like SQLite-based queue or Redis) to store pending events. This allows the simulation to survive restarts.
+19. Recursive Retry Logic: The sendWebhook function retries via recursion and setTimeout.
+       * Risk: Potential stack overflow or memory leaks under extreme volume.
+       * Suggestion: Implement a Retry-After header or a standard retry queue with exponential backoff.
+20. Searching mechanism in campaigns.
 ---
 
 ## 📈 Scale Assumptions & Architectural Trade-offs

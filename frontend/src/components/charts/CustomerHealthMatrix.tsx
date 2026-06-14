@@ -79,6 +79,6 @@ const CustomerHealthMatrix: React.FC<CustomerHealthMatrixProps> = React.memo(({ 
       </ResponsiveContainer>
     </div>
   );
-};
+});
 
 export default CustomerHealthMatrix;

@@ -1,0 +1,101 @@
+external_customer_id,name,email,phone,city,state,country
+CUST000001,Rahul Sharma,cust000001@example.com,+1-641-588-3679x550,Toronto,Ontario,Canada
+CUST000002,Priya Singh,cust000002@example.com,251.208.3364x5423,New Delhi,Delhi,India
+CUST000003,Amit Kumar,cust000003@example.com,646.798.3665x753,Toronto,Ontario,Canada
+CUST000004,Sneha Gupta,cust000004@example.com,(797)399-7307,Kolkata,West Bengal,India
+CUST000005,Priya Singh,cust000005@example.com,,Chennai,Tamil Nadu,India
+CUST000006,Priya Singh,cust000006@example.com,,San Francisco,California,United States
+CUST000007,Amit Kumar,cust000007@example.com,389-652-8320,Chennai,Tamil Nadu,India
+CUST000008,Amit Kumar,cust000008@example.com,+1-700-508-4307,Sydney,NSW,Australia
+CUST000009,Logan Phillips,cust000009@example.com,001-494-734-1532,Chennai,Tamil Nadu,India
+CUST000010,Ann Oconnell,cust000010@example.com,+1-646-679-3150x676,Bangalore,Karnataka,India
+CUST000011,Holly Floyd,cust000011@example.com,890.840.5790,New Delhi,Delhi,India
+CUST000012,David Miller,cust000012@example.com,335.741.1698x370,Toronto,Ontario,Canada
+CUST000013,Katie Velasquez,cust000013@example.com,+1-496-235-0201,San Francisco,California,United States
+CUST000014,Michelle Phillips,cust000014@example.com,686.484.4853x99414,Chennai,Tamil Nadu,India
+CUST000015,Jeffrey Shaffer,cust000015@example.com,588.836.7427,Toronto,Ontario,Canada
+CUST000016,Andrew Jennings,cust000016@example.com,(913)866-7575x2130,Mumbai,Maharashtra,India
+CUST000017,Nancy Miller,cust000017@example.com,(472)937-9917x136,Kolkata,West Bengal,India
+CUST000018,Mary Montgomery,cust000018@example.com,001-270-373-2923,New Delhi,Delhi,India
+CUST000019,Teresa Reeves,cust000019@example.com,6389928943,San Francisco,California,United States
+CUST000020,John Flynn,cust000020@example.com,414-412-6301,Kolkata,West Bengal,India
+CUST000021,Andrea Rivera,cust000021@example.com,+1-205-684-6817x95491,New Delhi,Delhi,India
+CUST000022,Denise Gilbert,cust000022@example.com,459-353-6943x5769,New York,New York,United States
+CUST000023,Jose Coleman,cust000023@example.com,287-860-3027x016,Mumbai,Maharashtra,India
+CUST000024,Miss Emily Nichols,cust000024@example.com,(327)836-9498x6898,New York,New York,United States
+CUST000025,Michael Harmon,cust000025@example.com,888.759.6731x037,London,England,United Kingdom
+CUST000026,Dawn Sutton,cust000026@example.com,7174926408,New Delhi,Delhi,India
+CUST000027,Kimberly Alexander,cust000027@example.com,574-277-8350x09419,New York,New York,United States
+CUST000028,Taylor Bean Hunter Rowe,cust000028@example.com,591-269-0191,San Francisco,California,United States
+CUST000029,Brenda Cook,cust000029@example.com,561.529.1027x36534,San Francisco,California,United States
+CUST000030,Christopher Pierce,cust000030@example.com,268-811-1481x5350,New York,New York,United States
+CUST000031,Timothy Boyle,cust000031@example.com,+1-565-973-5503x968,Chennai,Tamil Nadu,India
+CUST000032,Laura Moore,cust000032@example.com,+1-397-801-6086x02439,San Francisco,California,United States
+CUST000033,Rebecca Anderson,cust000033@example.com,001-667-639-0560x218,Sydney,NSW,Australia
+CUST000034,Michael Porter,cust000034@example.com,405-915-2861x2026,London,England,United Kingdom
+CUST000035,Kyle Miller,cust000035@example.com,9866694221,Sydney,NSW,Australia
+CUST000036,Mark Fields,cust000036@example.com,841.803.0975,Mumbai,Maharashtra,India
+CUST000037,John Brown,cust000037@example.com,220.928.5891x43391,New Delhi,Delhi,India
+CUST000038,Kevin Robbins,cust000038@example.com,922.944.7623x573,New York,New York,United States
+CUST000039,Sheila Fields,cust000039@example.com,(433)829-0768,London,England,United Kingdom
+CUST000040,Todd Byrd,cust000040@example.com,(693)885-7211,Sydney,NSW,Australia
+CUST000041,Elizabeth Davis,cust000041@example.com,(879)533-0083x079,Toronto,Ontario,Canada
+CUST000042,Mr. Sean Hill,cust000042@example.com,+1-884-420-1702x33563,Bangalore,Karnataka,India
+CUST000043,Douglas Miller,cust000043@example.com,571-448-9853x675,Toronto,Ontario,Canada
+CUST000044,Renee Hodge,cust000044@example.com,394-835-4729,New York,New York,United States
+CUST000045,Gregory Meza,cust000045@example.com,+1-900-543-8117,Sydney,NSW,Australia
+CUST000046,Kimberly Knight,cust000046@example.com,649.326.1567x4262,Bangalore,Karnataka,India
+CUST000047,Amanda Moss,cust000047@example.com,(896)352-1182x689,New Delhi,Delhi,India
+CUST000048,Brandi Robinson,cust000048@example.com,711-492-8954x84845,Toronto,Ontario,Canada
+CUST000049,Rebecca Diaz,cust000049@example.com,669.953.2542x07558,Mumbai,Maharashtra,India
+CUST000050,Gregory Hill,cust000050@example.com,,New York,New York,United States
+CUST000051,Robert Navarro MD,cust000051@example.com,544.738.3933x369,Sydney,NSW,Australia
+CUST000052,Jacob Brooks,cust000052@example.com,761-887-6731x146,New York,New York,United States
+CUST000053,Christopher Jones,cust000053@example.com,,Toronto,Ontario,Canada
+CUST000054,James Mitchell,cust000054@example.com,838.821.9892,Toronto,Ontario,Canada
+CUST000055,Kathleen Fitzgerald,cust000055@example.com,+1-586-430-7857x93565,London,England,United Kingdom
+CUST000056,Jennifer Griffin,cust000056@example.com,(458)661-9926,New York,New York,United States
+CUST000057,Jose Robles,cust000057@example.com,868.216.3292,Chennai,Tamil Nadu,India
+CUST000058,Laura Bryant,cust000058@example.com,001-312-936-1410x540,New Delhi,Delhi,India
+CUST000059,Alexander Rios,cust000059@example.com,001-294-360-5045x7927,New York,New York,United States
+CUST000060,Christine Rodriguez,cust000060@example.com,260-608-0825x2586,Chennai,Tamil Nadu,India
+CUST000061,Rachael Sutton,cust000061@example.com,001-645-383-3962x825,London,England,United Kingdom
+CUST000062,Stephanie Cobb,cust000062@example.com,(213)758-8217x69241,Sydney,NSW,Australia
+CUST000063,Lisa Jackson,cust000063@example.com,4388597773,Sydney,NSW,Australia
+CUST000064,Maria Peters,cust000064@example.com,(667)337-7501,Mumbai,Maharashtra,India
+CUST000065,Anthony Andrews,cust000065@example.com,(430)433-3012x22712,Sydney,NSW,Australia
+CUST000066,Sarah Davis,cust000066@example.com,(568)420-6688,New Delhi,Delhi,India
+CUST000067,Monica Adams,cust000067@example.com,001-628-862-9039x68126,Sydney,NSW,Australia
+CUST000068,Kenneth Phillips,cust000068@example.com,616-987-4238,Chennai,Tamil Nadu,India
+CUST000069,Danielle Garcia,cust000069@example.com,547-971-4181x1885,Toronto,Ontario,Canada
+CUST000070,Sandra Brown,cust000070@example.com,+1-534-729-5453,Toronto,Ontario,Canada
+CUST000071,Ryan Williams,cust000071@example.com,261.923.2418,Toronto,Ontario,Canada
+CUST000072,Timothy Brown,cust000072@example.com,8187598760,Sydney,NSW,Australia
+CUST000073,Connie Spence,cust000073@example.com,854.530.7803x3683,San Francisco,California,United States
+CUST000074,Joy Soto,cust000074@example.com,346.842.3047x7044,Toronto,Ontario,Canada
+CUST000075,Jennifer Lee,cust000075@example.com,793-538-0236,New Delhi,Delhi,India
+CUST000076,Dawn Thompson,cust000076@example.com,(428)549-8313x64209,Mumbai,Maharashtra,India
+CUST000077,Deborah James,cust000077@example.com,464-603-5796,Bangalore,Karnataka,India
+CUST000078,Rebekah Hall,cust000078@example.com,001-622-954-4214x712,Bangalore,Karnataka,India
+CUST000079,Kristin Oconnell,cust000079@example.com,001-430-335-3125,Toronto,Ontario,Canada
+CUST000080,Matthew Romero,cust000080@example.com,740.289.6131,Chennai,Tamil Nadu,India
+CUST000081,James Martinez,cust000081@example.com,734.969.5534,New York,New York,United States
+CUST000082,Brandon Hernandez,cust000082@example.com,001-327-617-1809x07649,Chennai,Tamil Nadu,India
+CUST000083,Justin Berg,cust000083@example.com,577.549.7274x404,New Delhi,Delhi,India
+CUST000084,John Chang,cust000084@example.com,231-945-1143,Bangalore,Karnataka,India
+CUST000085,Monique Porter,cust000085@example.com,974-937-4069,Bangalore,Karnataka,India
+CUST000086,Charles Cooper,cust000086@example.com,+1-759-425-4141x38881,Toronto,Ontario,Canada
+CUST000087,Erin Stevens,cust000087@example.com,+1-703-805-4832,New Delhi,Delhi,India
+CUST000088,Jennifer White,cust000088@example.com,+1-212-320-4585x4371,Toronto,Ontario,Canada
+CUST000089,Brian Gomez,cust000089@example.com,001-600-700-5000x91812,New York,New York,United States
+CUST000090,James Burgess,cust000090@example.com,+1-475-890-3775x615,Sydney,NSW,Australia
+CUST000091,Billy Jones,cust000091@example.com,461.553.6179x724,Sydney,NSW,Australia
+CUST000092,Michael Jones,cust000092@example.com,247-585-1765,Chennai,Tamil Nadu,India
+CUST000093,Mrs. Jennifer Lee,cust000093@example.com,001-834-703-3065,Chennai,Tamil Nadu,India
+CUST000094,Stephen Hernandez,cust000094@example.com,396-644-4773x35770,Toronto,Ontario,Canada
+CUST000095,Jennifer Cortez,cust000095@example.com,,New York,New York,United States
+CUST000096,Matthew Hendricks,cust000096@example.com,(937)726-4306x3294,New Delhi,Delhi,India
+CUST000097,Angela Sawyer,cust000097@example.com,(796)465-4716,New York,New York,United States
+CUST000098,Rachel Jarvis,cust000098@example.com,+1-967-301-8731x152,London,England,United Kingdom
+CUST000099,Justin Collins,cust000099@example.com,,New Delhi,Delhi,India
+CUST000100,Ian Macias,cust000100@example.com,(562)497-8898x708,New Delhi,Delhi,India

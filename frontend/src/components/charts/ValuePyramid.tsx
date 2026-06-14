@@ -33,6 +33,6 @@ const ValuePyramid: React.FC<ValuePyramidProps> = React.memo(({ data }) => {
       ))}
     </div>
   );
-};
+});
 
 export default ValuePyramid;

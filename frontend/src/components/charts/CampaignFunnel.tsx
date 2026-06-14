@@ -92,6 +92,6 @@ const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delive
       />
     </div>
   );
-};
+});
 
 export default CampaignFunnel;

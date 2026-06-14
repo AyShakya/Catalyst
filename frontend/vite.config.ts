@@ -10,10 +10,16 @@ export default defineConfig({
     assetsInlineLimit: 4096, // Inline assets smaller than 4KB
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-recharts': ['recharts'],
-          'vendor-framer': ['framer-motion'],
-          'vendor-icons': ['lucide-react'],
+        manualChunks(id) {
+          if (id.includes('recharts')) {
+            return 'vendor-recharts';
+          }
+          if (id.includes('framer-motion')) {
+            return 'vendor-framer';
+          }
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
         },
       },
     },
