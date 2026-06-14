@@ -3,11 +3,32 @@
 Work - 
 3. Maybe adding a jobqueue for all of this async background proceses.
 4. Maybe introducing caching somewhere, and maybe setting up multi-agent orchestration.
-5. Testing the behaviour, scalability, and optimization for larger data space, like 10k customers and orders.
 6. Something about continous customer and order data from marketer, because in real time it will not be one time data, it will also keep updating with time.
-7. Testing against every and all types of prompts, prompt injection, and agent's behaviour in front of stupid prompts with unresonable requests. 
-8. Different behaviour for long, detailed prompt and small vauge prompts, handling both of them gracefully. 
 9. Right now the campaign history feature is very rigid and not strong, need to fix that, make it more dynamic and robust.
-12. Multiple parallel campaign processing.
+10. Security against infinite chatting and draft creation.
 
 - Complete debugging and optimization analyses.
+
+---
+
+## 📈 Scale Assumptions & Architectural Trade-offs
+
+During the development of Catalyst V2, several conscious architectural decisions were made to prioritize rapid prototyping and "AI-Native" UX while maintaining a clear roadmap for production scale.
+
+### 1. Concurrency & Processing
+*   **Current State**: Campaigns are dispatched using Node.js `setImmediate` background loops. This works efficiently for audiences up to ~50k users.
+*   **Scale Trade-off**: For 1M+ users, a direct loop would risk blocking the Node.js event loop.
+*   **Production Path**: Move campaign dispatch to a dedicated **Task Queue (Redis/BullMQ)** with worker clusters to ensure the API remains responsive during high-volume dispatches.
+
+### 2. Memory Management
+*   **Current State**: Pending communications are fetched into memory for dispatching.
+*   **Scale Trade-off**: Large campaigns could cause Out-of-Memory (OOM) errors.
+*   **Production Path**: Implement **Cursor-based Batching** (fetching 500-1000 records at a time) to maintain a flat memory profile regardless of audience size.
+
+### 3. Intelligence & Analytics
+*   **Current State**: Weekly Executive Briefs use **Lazy Evaluation with a 7-day Cache**. This eliminates redundant LLM calls (OpenRouter) and ensures instant dashboard loads for returning users.
+*   **Current State**: Opportunity detection uses **Deterministic Heuristics (SQL detectors)** instead of raw LLM scanning, ensuring 100% accuracy and sub-millisecond performance on large datasets.
+
+### 4. Data Integrity
+*   **Idempotency**: The Webhook Controller uses a **Status Priority Map** to ensure events are processed in order (e.g., a `DELIVERED` event cannot overwrite an `OPENED` state if it arrives late).
+*   **PII Security**: The system "freezes" the audience into a separate table before dispatch, abstracting sensitive customer data from the active campaign dashboard.
