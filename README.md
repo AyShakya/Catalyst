@@ -25,6 +25,8 @@ Catalyst is an AI-native CRM that empowers marketers to architect, launch, and a
     (React/Vite)                                    (Channel Service)
 ```
 
+![Architecture Flow](frontend/public/arch.png)
+
 ## AI Capabilities
 
 ### AI Audience Generation
