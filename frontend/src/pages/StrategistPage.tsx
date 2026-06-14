@@ -468,7 +468,7 @@ const StrategistPage: React.FC = () => {
                 input.trim() && !isLoading && status !== 'LAUNCHED' ? 'bg-accent text-white' : 'bg-border text-secondary'
               }`}
             >
-              <Send size={14} className="sm:size-16" />
+              <Send size={14} className="sm:size-4" />
             </button>
           </div>
         </div>
