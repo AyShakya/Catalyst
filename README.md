@@ -45,7 +45,7 @@ The Campaign Intelligence service aggregates historical performance data across 
 - Dataset Scale: Optimized for up to 10,000 customers per brand.
 - Campaign Volume: Designed to support 100 campaign launches per day.
 - Delivery Model: Utilizes simulated delivery loops for rapid prototyping and feedback.
-- Processing: Current synchronous ingestion assumes datasets of up to 25,000 records per upload to stay within standard HTTP timeout windows (30-60 seconds).
+- Processing: Current synchronous ingestion assumes datasets of up to 10,000 customers and 100,000 orders per upload to stay within standard HTTP timeout windows (30-60 seconds).
 
 ### Production Roadmap Improvements
 - Event Streaming: Integration of Apache Kafka for high-throughput, asynchronous event processing.
