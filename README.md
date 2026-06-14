@@ -1,4 +1,4 @@
-# Catalyst Intelligence OS
+# Catalyst - AI Marketing Strategist
 
 ## Problem
 Brands struggle to identify the right audience segments and craft personalized, high-converting campaigns across fragmented data silos. Traditional CRMs require manual segment building and repetitive message drafting, leading to slow execution and missed growth opportunities.
