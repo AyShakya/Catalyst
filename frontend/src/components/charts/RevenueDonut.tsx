@@ -10,7 +10,7 @@ interface RevenueDonutProps {
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-const RevenueDonut: React.FC<RevenueDonutProps> = ({ data }) => {
+const RevenueDonut: React.FC<RevenueDonutProps> = React.memo(({ data }) => {
   const totalCount = data.reduce((acc, curr) => acc + curr.count, 0);
 
   const formatTooltip = (value: any) => {

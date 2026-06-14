@@ -6,6 +6,18 @@ import svgr from 'vite-plugin-svgr';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), svgr(), tailwindcss()],
+  build: {
+    assetsInlineLimit: 4096, // Inline assets smaller than 4KB
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-recharts': ['recharts'],
+          'vendor-framer': ['framer-motion'],
+          'vendor-icons': ['lucide-react'],
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {

@@ -11,8 +11,11 @@ import {
   OpportunitySkeleton 
 } from '../components/layout/Skeleton';
 
-import CampaignFunnel from '../components/charts/CampaignFunnel';
-import ForecastComparison from '../components/charts/ForecastComparison';
+// import CampaignFunnel from '../components/charts/CampaignFunnel';
+// import ForecastComparison from '../components/charts/ForecastComparison';
+
+const CampaignFunnel = React.lazy(() => import('../components/charts/CampaignFunnel'));
+const ForecastComparison = React.lazy(() => import('../components/charts/ForecastComparison'));
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -197,13 +200,15 @@ const CampaignDetailsPage: React.FC = () => {
               </h3>
               <div className="text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg">Real-time Performance</div>
             </div>
-            <CampaignFunnel 
-              sent={campaign.audience_size}
-              delivered={metrics?.total_delivered || 0}
-              opened={metrics?.total_opened || 0}
-              clicked={metrics?.total_clicked || 0}
-              purchased={metrics?.total_purchased || 0}
-            />
+            <React.Suspense fallback={<FunnelSkeleton />}>
+              <CampaignFunnel 
+                sent={campaign.audience_size}
+                delivered={metrics?.total_delivered || 0}
+                opened={metrics?.total_opened || 0}
+                clicked={metrics?.total_clicked || 0}
+                purchased={metrics?.total_purchased || 0}
+              />
+            </React.Suspense>
           </div>
 
           {/* Forecast vs Actual */}
@@ -217,20 +222,22 @@ const CampaignDetailsPage: React.FC = () => {
               </div>
             </div>
             <div className="h-80 w-full">
-              <ForecastComparison 
-                forecast={{
-                  delivered: campaign.forecast_delivered || 0,
-                  opened: campaign.forecast_opened || 0,
-                  clicked: campaign.forecast_clicked || 0,
-                  conversions: campaign.forecast_purchased || 0
-                }}
-                actual={{
-                  delivered: metrics?.total_delivered || 0,
-                  opened: metrics?.total_opened || 0,
-                  clicked: metrics?.total_clicked || 0,
-                  conversions: metrics?.total_purchased || 0
-                }}
-              />
+              <React.Suspense fallback={<ComparisonSkeleton />}>
+                <ForecastComparison 
+                  forecast={{
+                    delivered: campaign.forecast_delivered || 0,
+                    opened: campaign.forecast_opened || 0,
+                    clicked: campaign.forecast_clicked || 0,
+                    conversions: campaign.forecast_purchased || 0
+                  }}
+                  actual={{
+                    delivered: metrics?.total_delivered || 0,
+                    opened: metrics?.total_opened || 0,
+                    clicked: metrics?.total_clicked || 0,
+                    conversions: metrics?.total_purchased || 0
+                  }}
+                />
+              </React.Suspense>
             </div>
           </div>
         </div>

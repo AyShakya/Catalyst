@@ -9,3 +9,5 @@ Work -
 8. Different behaviour for long, detailed prompt and small vauge prompts, handling both of them gracefully. 
 9. Right now the campaign history feature is very rigid and not strong, need to fix that, make it more dynamic and robust.
 12. Multiple parallel campaign processing.
+
+- Complete debugging and optimization analyses.

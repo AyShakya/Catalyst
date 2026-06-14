@@ -43,7 +43,7 @@ interface CampaignFunnelProps {
   purchased: number;
 }
 
-const CampaignFunnel: React.FC<CampaignFunnelProps> = ({ sent, delivered, opened, clicked, purchased }) => {
+const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delivered, opened, clicked, purchased }) => {
   const deliveryRate = sent > 0 ? ((delivered / sent) * 100).toFixed(1) : '0';
   const openRate = delivered > 0 ? ((opened / delivered) * 100).toFixed(1) : '0';
   const ctr = opened > 0 ? ((clicked / opened) * 100).toFixed(1) : '0';

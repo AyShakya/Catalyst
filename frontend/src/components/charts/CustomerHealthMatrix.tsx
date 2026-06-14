@@ -17,7 +17,7 @@ const COLORS = {
   cooling: '#f59e0b', // Amber
 };
 
-const CustomerHealthMatrix: React.FC<CustomerHealthMatrixProps> = ({ data }) => {
+const CustomerHealthMatrix: React.FC<CustomerHealthMatrixProps> = React.memo(({ data }) => {
   const formatTooltip = (value: any, name: string, props: any) => {
     if (name === 'Loyalty') return [`${value}/100`, 'Loyalty Score'];
     if (name === 'Churn Risk') return [`${value}%`, 'Churn Risk'];

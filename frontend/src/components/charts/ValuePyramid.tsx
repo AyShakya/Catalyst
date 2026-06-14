@@ -7,7 +7,7 @@ interface ValuePyramidProps {
 
 const COLORS = ['#1e1b4b', '#312e81', '#3730a3', '#4338ca', '#4f46e5'];
 
-const ValuePyramid: React.FC<ValuePyramidProps> = ({ data }) => {
+const ValuePyramid: React.FC<ValuePyramidProps> = React.memo(({ data }) => {
   return (
     <div className="flex flex-col gap-2 w-full">
       {data.map((tier, index) => (

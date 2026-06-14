@@ -18,7 +18,7 @@ interface ForecastComparisonProps {
   };
 }
 
-const ForecastComparison: React.FC<ForecastComparisonProps> = ({ forecast, actual }) => {
+const ForecastComparison: React.FC<ForecastComparisonProps> = React.memo(({ forecast, actual }) => {
   const data = [
     { name: 'Delivered', Forecast: forecast.delivered, Actual: actual.delivered },
     { name: 'Opened', Forecast: forecast.opened, Actual: actual.opened },

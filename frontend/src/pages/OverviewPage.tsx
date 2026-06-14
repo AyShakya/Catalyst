@@ -25,9 +25,14 @@ import {
 } from '../components/layout/Skeleton';
 import { BrandAnalytics, GrowthOpportunity, HealthMatrixPoint, ValuePyramidTier } from '../types/intelligence';
 import { Campaign } from '../types/campaign';
-import CustomerHealthMatrix from '../components/charts/CustomerHealthMatrix';
-import RevenueDonut from '../components/charts/RevenueDonut';
-import ValuePyramid from '../components/charts/ValuePyramid';
+// import CustomerHealthMatrix from '../components/charts/CustomerHealthMatrix';
+// import RevenueDonut from '../components/charts/RevenueDonut';
+// import ValuePyramid from '../components/charts/ValuePyramid';
+
+// Lazy load heavy charts
+const CustomerHealthMatrix = React.lazy(() => import('../components/charts/CustomerHealthMatrix'));
+const RevenueDonut = React.lazy(() => import('../components/charts/RevenueDonut'));
+const ValuePyramid = React.lazy(() => import('../components/charts/ValuePyramid'));
 
 const KPICard = ({ title, value, icon: Icon, description, detail }: { title: string; value: string; icon: LucideIcon; description: string; detail?: string }) => (
   <div className="bg-white p-6 rounded-3xl border border-border shadow-sm group hover:border-accent transition-all relative overflow-hidden">
@@ -320,7 +325,9 @@ const OverviewPage: React.FC = () => {
                 <TrendingUp size={14} className="text-accent" /> Spend Benchmarks
               </h3>
               <div className="flex-1 flex items-center">
-                <ValuePyramid data={valuePyramid} />
+                <React.Suspense fallback={<PyramidSkeleton />}>
+                  <ValuePyramid data={valuePyramid} />
+                </React.Suspense>
               </div>
               <p className="text-[10px] text-secondary font-medium italic mt-6 leading-relaxed">
                 Percentile distribution of customer lifetime value across your entire database.
