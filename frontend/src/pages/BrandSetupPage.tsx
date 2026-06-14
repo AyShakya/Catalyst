@@ -91,19 +91,19 @@ const BrandSetupPage: React.FC = () => {
 
   if (state === 'processing') {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 sm:p-6">
         <div className="max-w-md w-full">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
+            className="text-center mb-10 sm:mb-12"
           >
-            <Loader2 className="w-12 h-12 text-accent animate-spin mx-auto mb-6" />
-            <h2 className="text-2xl font-black mb-2 uppercase">Building Your Workspace</h2>
-            <p className="text-secondary">Catalyst is processing your brand data...</p>
+            <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 text-accent animate-spin mx-auto mb-6" />
+            <h2 className="text-xl sm:text-2xl font-black mb-2 uppercase">Building Your Workspace</h2>
+            <p className="text-sm sm:text-base text-secondary">Catalyst is processing your brand data...</p>
           </motion.div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {steps.map((step, index) => (
               <motion.div 
                 key={index}
@@ -113,16 +113,16 @@ const BrandSetupPage: React.FC = () => {
                   x: 0,
                   color: index === currentStep ? '#4f46e5' : '#111111'
                 }}
-                className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card-bg"
+                className="flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border border-border bg-card-bg"
               >
                 {index < currentStep ? (
-                  <CheckCircle2 className="text-success" size={20} />
+                  <CheckCircle2 className="text-success shrink-0" size={18} />
                 ) : index === currentStep ? (
-                  <Loader2 className="animate-spin" size={20} />
+                  <Loader2 className="animate-spin shrink-0" size={18} />
                 ) : (
-                  <div className="w-5 h-5 rounded-full border-2 border-border" />
+                  <div className="w-[18px] h-[18px] rounded-full border-2 border-border shrink-0" />
                 )}
-                <span className="font-bold text-sm uppercase tracking-wide">{step}</span>
+                <span className="font-bold text-[11px] sm:text-sm uppercase tracking-wide truncate">{step}</span>
               </motion.div>
             ))}
           </div>
@@ -132,80 +132,80 @@ const BrandSetupPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-card-bg py-20 px-6">
+    <div className="min-h-screen bg-card-bg py-10 sm:py-20 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <button 
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors mb-8 font-bold uppercase text-xs tracking-widest"
+          className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors mb-6 sm:mb-8 font-bold uppercase text-[10px] sm:text-xs tracking-widest"
         >
-          <ArrowLeft size={16} /> Back to Home
+          <ArrowLeft size={14} /> Back to Home
         </button>
 
-        <div className="bg-white p-10 rounded-3xl border border-border shadow-xl">
-          <div className="mb-10">
-            <h1 className="text-4xl font-black mb-4">SETUP BRAND</h1>
-            <p className="text-secondary leading-relaxed">
+        <div className="bg-white p-6 sm:p-10 rounded-2xl sm:rounded-3xl border border-border shadow-xl">
+          <div className="mb-8 sm:mb-10 min-w-0">
+            <h1 className="text-2xl sm:text-4xl font-black mb-3 sm:mb-4 uppercase truncate sm:whitespace-normal">Setup Brand</h1>
+            <p className="text-sm sm:text-base text-secondary leading-relaxed">
               Create your intelligence workspace by uploading your customer and transaction history.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-secondary">Brand Name *</label>
+                <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Brand Name *</label>
                 <input 
                   type="text" 
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium"
+                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
                   placeholder="e.g. Acme Corp"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-secondary">Industry</label>
+                <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Industry</label>
                 <input 
                   type="text" 
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium"
+                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
                   placeholder="e.g. Retail"
                 />
               </div>
             </div>
 
             <div className="space-y-4">
-              <label className="text-xs font-black uppercase tracking-widest text-secondary">Data Ingestion *</label>
+              <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Data Ingestion *</label>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div 
                   {...getCustomerProps()} 
-                  className={`p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                  className={`p-6 sm:p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] ${
                     isCustomerActive ? 'border-accent bg-accent/5' : customerFile ? 'border-success bg-success/5' : 'border-border hover:border-accent'
                   }`}
                 >
                   <input {...getCustomerInput()} />
-                  <UploadCloud className={`mb-4 ${customerFile ? 'text-success' : 'text-secondary'}`} size={32} />
-                  <p className="text-sm font-bold uppercase tracking-wide mb-1">
-                    {customerFile ? 'Customer CSV Selected' : 'Customers CSV'}
+                  <UploadCloud className={`mb-3 sm:mb-4 shrink-0 ${customerFile ? 'text-success' : 'text-secondary'}`} size={28} />
+                  <p className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-1 truncate max-w-full px-2">
+                    {customerFile ? 'Customers Selected' : 'Customers CSV'}
                   </p>
-                  <p className="text-xs text-secondary italic">
+                  <p className="text-[10px] sm:text-xs text-secondary italic truncate max-w-full px-2">
                     {customerFile ? customerFile.name : 'Drop file or click to browse'}
                   </p>
                 </div>
 
                 <div 
                   {...getOrderProps()} 
-                  className={`p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                  className={`p-6 sm:p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] ${
                     isOrderActive ? 'border-accent bg-accent/5' : orderFile ? 'border-success bg-success/5' : 'border-border hover:border-accent'
                   }`}
                 >
                   <input {...getOrderInput()} />
-                  <UploadCloud className={`mb-4 ${orderFile ? 'text-success' : 'text-secondary'}`} size={32} />
-                  <p className="text-sm font-bold uppercase tracking-wide mb-1">
-                    {orderFile ? 'Orders CSV Selected' : 'Orders CSV'}
+                  <UploadCloud className={`mb-3 sm:mb-4 shrink-0 ${orderFile ? 'text-success' : 'text-secondary'}`} size={28} />
+                  <p className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-1 truncate max-w-full px-2">
+                    {orderFile ? 'Orders Selected' : 'Orders CSV'}
                   </p>
-                  <p className="text-xs text-secondary italic">
+                  <p className="text-[10px] sm:text-xs text-secondary italic truncate max-w-full px-2">
                     {orderFile ? orderFile.name : 'Drop file or click to browse'}
                   </p>
                 </div>
@@ -216,7 +216,7 @@ const BrandSetupPage: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium"
+                className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-[11px] sm:text-sm font-medium"
               >
                 {errorMessage}
               </motion.div>
@@ -224,7 +224,7 @@ const BrandSetupPage: React.FC = () => {
 
             <button 
               type="submit"
-              className="w-full btn btn-primary py-4 text-lg"
+              className="w-full bg-foreground text-white py-4 rounded-xl font-black text-sm sm:text-lg uppercase tracking-widest hover:bg-accent transition-all shadow-lg shadow-black/5"
             >
               Build Workspace
             </button>

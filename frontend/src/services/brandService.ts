@@ -65,6 +65,7 @@ export const chatWithStrategist = async (brandId: string, message: string, sessi
 
 type StrategistStreamHandlers = {
   onDelta?: (delta: string) => void;
+  onProcessing?: (data: any) => void;
   onFinal?: (payload: any) => void;
   onError?: (error: string) => void;
 };
@@ -106,12 +107,22 @@ export const chatWithStrategistStream = async (
       return;
     }
 
+    if (eventName === 'processing') {
+      try {
+        const parsed = JSON.parse(data);
+        handlers.onProcessing?.(parsed);
+      } catch {
+        // Ignore malformed frames
+      }
+      return;
+    }
+
     if (eventName === 'final') {
       try {
         finalPayload = JSON.parse(data);
         handlers.onFinal?.(finalPayload);
       } catch {
-        // If the final frame is malformed, the caller can fall back.
+        // If the final frame is malformed, we will throw after the loop
       }
       return;
     }
@@ -119,55 +130,67 @@ export const chatWithStrategistStream = async (
     if (eventName === 'error') {
       try {
         const parsed = JSON.parse(data);
-        handlers.onError?.(parsed.error || 'Strategist streaming failed');
-      } catch {
+        const errorMsg = parsed.error || 'Strategist streaming failed';
+        handlers.onError?.(errorMsg);
+        throw new Error(errorMsg);
+      } catch (e) {
         handlers.onError?.('Strategist streaming failed');
+        throw e;
       }
     }
   };
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-
-    buffer += decoder.decode(value, { stream: true });
-
-    let frameEnd = buffer.indexOf('\n\n');
-    while (frameEnd !== -1) {
-      const frame = buffer.slice(0, frameEnd);
-      buffer = buffer.slice(frameEnd + 2);
-
-      const lines = frame.split(/\r?\n/);
-      let eventName = 'message';
-      const dataLines: string[] = [];
-
-      for (const line of lines) {
-        if (line.startsWith('event:')) {
-          eventName = line.slice(6).trim();
-          continue;
-        }
-
-        if (line.startsWith('data:')) {
-          dataLines.push(line.slice(5).trimStart());
-        }
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
       }
 
-      const data = dataLines.join('\n');
-      if (data) {
-        emitEvent(eventName, data);
-      }
+      buffer += decoder.decode(value, { stream: true });
 
-      frameEnd = buffer.indexOf('\n\n');
+      let frameEnd = buffer.indexOf('\n\n');
+      while (frameEnd !== -1) {
+        const frame = buffer.slice(0, frameEnd);
+        buffer = buffer.slice(frameEnd + 2);
+
+        const lines = frame.split(/\r?\n/);
+        let eventName = 'message';
+        const dataLines: string[] = [];
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventName = line.slice(6).trim();
+            continue;
+          }
+
+          if (line.startsWith('data:')) {
+            dataLines.push(line.slice(5).trimStart());
+          }
+        }
+
+        const data = dataLines.join('\n');
+        if (data) {
+          emitEvent(eventName, data);
+        }
+
+        frameEnd = buffer.indexOf('\n\n');
+      }
     }
+  } catch (e) {
+    // If emitEvent threw an error, we catch it here and rethrow
+    throw e;
+  }
+
+  if (!finalPayload) {
+    throw new Error('Stream ended without final payload');
   }
 
   return finalPayload;
 };
 
-export const getStrategistSession = async (sessionId: string) => {
-  const response = await axios.get(`${API_URL}/intelligence/strategist/session/${sessionId}`);
+export const getStrategistSession = async (brandId: string, sessionId: string) => {
+  const response = await axios.get(`${API_URL}/intelligence/${brandId}/strategist/session/${sessionId}`);
   return response.data;
 };
 
@@ -176,8 +199,8 @@ export const getActiveSessions = async (brandId: string) => {
   return response.data;
 };
 
-export const closeSession = async (sessionId: string) => {
-  const response = await axios.delete(`${API_URL}/intelligence/strategist/session/${sessionId}`);
+export const closeSession = async (brandId: string, sessionId: string) => {
+  const response = await axios.delete(`${API_URL}/intelligence/${brandId}/strategist/session/${sessionId}`);
   return response.data;
 };
 

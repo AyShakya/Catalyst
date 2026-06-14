@@ -26,6 +26,7 @@ type Draft = {
   audience: {
     size: number;
     avgSpend: number;
+    avgOrderValue: number;
     avgLoyalty: number;
     avgChurn: number;
   };
@@ -37,6 +38,14 @@ type Draft = {
     revenue: number;
   };
 };
+
+const ThinkingDots = () => (
+  <div className="flex gap-1 shrink-0 py-1">
+    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
+    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
+    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
+  </div>
+);
 
 const StrategistPage: React.FC = () => {
   const navigate = useNavigate();
@@ -95,7 +104,10 @@ const StrategistPage: React.FC = () => {
   const loadSession = async (sid: string) => {
     try {
       setIsLoading(true);
-      const res = await getStrategistSession(sid);
+      const brandId = localStorage.getItem('catalyst_brand_id');
+      if (!brandId) return;
+
+      const res = await getStrategistSession(brandId, sid);
       if (res.status === 'success') {
         setSessionId(sid);
         setMessages(res.data.history);
@@ -109,23 +121,43 @@ const StrategistPage: React.FC = () => {
     }
   };
 
-  const handleCloseSession = async () => {
-    if (!sessionId) return;
+  const handleDeleteSession = async (e: React.MouseEvent, sid: string) => {
+    e.stopPropagation();
     try {
-      await closeSession(sessionId);
-      setSessionId(null);
-      setMessages([]);
-      setLatestDraft(null);
-      setStatus('ACTIVE');
-      window.history.replaceState(null, '', window.location.pathname);
       const brandId = localStorage.getItem('catalyst_brand_id');
-      if (brandId) fetchActiveSessions(brandId);
+      if (!brandId) return;
+
+      await closeSession(brandId, sid);
+      setActiveSessions(prev => prev.filter(s => s.id !== sid));
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+    }
+  };
+
+  const handleCloseSession = async () => {
+    if (!sessionId || isLoading) return;
+    
+    // Optimistic UI for immediate feedback
+    const targetSessionId = sessionId;
+    const brandId = localStorage.getItem('catalyst_brand_id');
+    if (!brandId) return;
+
+    setSessionId(null);
+    setMessages([]);
+    setLatestDraft(null);
+    setStatus('ACTIVE');
+    window.history.replaceState(null, '', window.location.pathname);
+
+    try {
+      await closeSession(brandId, targetSessionId);
+      fetchActiveSessions(brandId);
     } catch (err) {
       console.error("Failed to close session:", err);
     }
   };
 
   const handleSendMessage = async () => {
+    // Strict prevention of concurrent sends
     if (!input.trim() || isLoading || status === 'LAUNCHED') return;
 
     const brandId = localStorage.getItem('catalyst_brand_id')!;
@@ -133,18 +165,18 @@ const StrategistPage: React.FC = () => {
     setInput('');
     setIsLoading(true);
 
-    // Optimistic UI
-    setMessages(prev => [...prev, { role: 'USER', content: userMsg } as Message]);
-    streamingAssistantIndexRef.current = null;
+    // Optimistic UI: User message + empty Assistant message (thinking state)
+    setMessages(prev => {
+      const next = [...prev, 
+        { role: 'USER', content: userMsg } as Message,
+        { role: 'ASSISTANT', content: '' } as Message
+      ];
+      streamingAssistantIndexRef.current = next.length - 1;
+      return next;
+    });
 
     try {
       let streamedFinal: any = null;
-
-      setMessages(prev => {
-        const next = [...prev, { role: 'ASSISTANT', content: '' } as Message];
-        streamingAssistantIndexRef.current = next.length - 1;
-        return next;
-      });
 
       try {
         streamedFinal = await chatWithStrategistStream(brandId, userMsg, sessionId || undefined, {
@@ -175,6 +207,7 @@ const StrategistPage: React.FC = () => {
           },
         });
       } catch (streamError) {
+        console.warn("Streaming failed, falling back to polling", streamError);
         const fallbackRes = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
         if (fallbackRes.status === 'success') {
           if (!sessionId) {
@@ -189,12 +222,13 @@ const StrategistPage: React.FC = () => {
         throw streamError;
       }
 
-      if (streamedFinal && (typeof streamedFinal.message === 'string' || Array.isArray(streamedFinal.history))) {
+      if (streamedFinal) {
         if (!sessionId && streamedFinal.sessionId) {
           setSessionId(streamedFinal.sessionId);
           window.history.replaceState(null, '', `?session=${streamedFinal.sessionId}`);
         }
 
+        // Only use history if the message content differs significantly (safety fallback)
         if (Array.isArray(streamedFinal.history) && streamedFinal.history.length > 0) {
           setMessages(streamedFinal.history);
         } else if (typeof streamedFinal.message === 'string') {
@@ -213,27 +247,25 @@ const StrategistPage: React.FC = () => {
         if (streamedFinal.draft) {
           setLatestDraft(streamedFinal.draft);
         }
-      } else {
-        const res = await chatWithStrategist(brandId, userMsg, sessionId || undefined);
-        if (res.status === 'success') {
-          if (!sessionId) {
-            setSessionId(res.data.sessionId);
-            window.history.replaceState(null, '', `?session=${res.data.sessionId}`);
-          }
-          setMessages(res.data.history);
-          setLatestDraft(res.data.draft);
-        }
       }
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'ASSISTANT', content: "I encountered an error while analyzing your request. Please try again." } as Message]);
+      // Clean up the empty assistant bubble on error
+      setMessages(prev => {
+        const next = [...prev];
+        const index = streamingAssistantIndexRef.current;
+        if (index !== null && index < next.length) {
+          next[index] = { role: 'ASSISTANT', content: "I encountered an error while analyzing your request. Please try again." } as Message;
+        }
+        return next;
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLaunch = async () => {
-    if (!sessionId || isLaunching || status === 'LAUNCHED') return;
+    if (!sessionId || isLaunching || status === 'LAUNCHED' || isLoading) return;
 
     const brandId = localStorage.getItem('catalyst_brand_id')!;
     setIsLaunching(true);
@@ -261,42 +293,43 @@ const StrategistPage: React.FC = () => {
   ];
 
   return (
-    <div className="h-auto lg:h-[calc(100vh-120px)] flex flex-col xl:flex-row gap-6 lg:gap-8">
+    <div className="h-auto lg:h-[calc(100vh-140px)] xl:h-[calc(100vh-120px)] flex flex-col xl:flex-row gap-6 lg:gap-8 min-h-0">
       {/* Left Chat Section */}
-      <div className="flex-1 min-w-0 min-h-[60vh] lg:min-h-0 flex flex-col bg-white rounded-4xl border border-border shadow-sm overflow-hidden relative">
-        <div className="p-6 border-b border-border flex justify-between items-center bg-card-bg/30">
+      <div className="flex-1 min-w-0 min-h-[500px] lg:min-h-0 flex flex-col bg-white rounded-3xl sm:rounded-4xl border border-border shadow-sm overflow-hidden relative">
+        <div className="p-4 sm:p-6 border-b border-border flex flex-wrap justify-between items-center bg-card-bg/30 gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent text-white rounded-xl shadow-lg shadow-accent/20">
+            <div className="p-2 bg-accent text-white rounded-xl shadow-lg shadow-accent/20 shrink-0">
               <Bot size={20} />
             </div>
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-widest">AI Strategist</h2>
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-sm font-black uppercase tracking-widest truncate">AI Strategist</h2>
               <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${status === 'LAUNCHED' ? 'bg-secondary' : 'bg-success animate-pulse'}`} />
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${status === 'LAUNCHED' ? 'bg-secondary' : 'bg-success animate-pulse'}`} />
+                <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase tracking-widest truncate">
                   {status === 'LAUNCHED' ? 'Session Locked' : 'Online & Analyzing'}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
             {sessionId && status !== 'LAUNCHED' && (
               <button 
                 onClick={handleCloseSession}
-                className="hidden sm:flex items-center gap-1.5 text-[10px] font-black text-error uppercase tracking-widest bg-error/5 hover:bg-error/10 px-3 py-1.5 rounded-lg transition-colors"
+                disabled={isLoading}
+                className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black text-error uppercase tracking-widest bg-error/5 hover:bg-error/10 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
               >
-                <Trash2 size={12} /> Discard
+                <Trash2 size={12} /> <span className="hidden xs:inline">Discard</span>
               </button>
             )}
             {sessionId && (
-              <div className="flex items-center gap-2 text-[10px] font-black text-secondary uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-border">
-                <History size={12} /> Version {latestDraft?.version || 1}
+              <div className="flex items-center gap-2 text-[9px] sm:text-[10px] font-black text-secondary uppercase tracking-widest bg-white px-2.5 sm:px-3 py-1.5 rounded-lg border border-border">
+                <History size={12} /> <span className="hidden xs:inline">Version</span> {latestDraft?.version || 1}
               </div>
             )}
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 scrollbar-hide">
           <AnimatePresence initial={false}>
             {!sessionId && activeSessions.length > 0 && messages.length === 0 && (
               <motion.div 
@@ -309,22 +342,33 @@ const StrategistPage: React.FC = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {activeSessions.map(session => (
-                    <button 
+                    <div 
                       key={session.id}
-                      onClick={() => {
-                        window.history.replaceState(null, '', `?session=${session.id}`);
-                        loadSession(session.id);
-                      }}
-                      className="text-left p-4 rounded-2xl border border-border hover:border-accent bg-card-bg transition-all group"
+                      className="group relative"
                     >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-black truncate max-w-[80%]">{session.latestDraft?.name || "Untitled Strategy"}</span>
-                        <ArrowRight size={14} className="text-secondary group-hover:text-accent" />
-                      </div>
-                      <p className="text-[10px] text-secondary font-medium uppercase tracking-widest">
-                        Updated {new Date(session.updated_at).toLocaleDateString()}
-                      </p>
-                    </button>
+                      <button 
+                        onClick={() => {
+                          window.history.replaceState(null, '', `?session=${session.id}`);
+                          loadSession(session.id);
+                        }}
+                        className="w-full text-left p-4 rounded-2xl border border-border hover:border-accent bg-card-bg transition-all min-w-0 pr-12"
+                      >
+                        <div className="flex justify-between items-center mb-2 gap-2">
+                          <span className="text-xs font-black truncate">{session.latestDraft?.name || "Untitled Strategy"}</span>
+                          <ArrowRight size={14} className="text-secondary group-hover:text-accent shrink-0" />
+                        </div>
+                        <p className="text-[10px] text-secondary font-medium uppercase tracking-widest">
+                          Updated {new Date(session.updated_at).toLocaleDateString()}
+                        </p>
+                      </button>
+                      <button 
+                        onClick={(e) => handleDeleteSession(e, session.id)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-secondary hover:text-error transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete Session"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </motion.div>
@@ -334,13 +378,13 @@ const StrategistPage: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-8"
+                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-8 px-4"
               >
-                <div className="w-20 h-20 bg-accent/5 rounded-full flex items-center justify-center mb-8">
-                  <Sparkles className="text-accent w-10 h-10" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-accent/5 rounded-full flex items-center justify-center mb-6 sm:mb-8">
+                  <Sparkles className="text-accent w-8 h-8 sm:w-10 sm:h-10" />
                 </div>
-                <h3 className="text-3xl font-black uppercase tracking-tighter mb-4">Strategic Intelligence</h3>
-                <p className="text-secondary font-medium mb-12">
+                <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter mb-4">Strategic Intelligence</h3>
+                <p className="text-sm sm:text-base text-secondary font-medium mb-8 sm:mb-12">
                   Describe a business outcome, and I will architect the ideal audience and communication strategy for you.
                 </p>
                 <div className="grid grid-cols-1 gap-3 w-full">
@@ -348,9 +392,9 @@ const StrategistPage: React.FC = () => {
                     <button 
                       key={i}
                       onClick={() => setInput(p)}
-                      className="text-left px-5 py-3 rounded-xl border border-border hover:border-accent hover:bg-accent/2 transition-all text-xs font-bold text-secondary flex justify-between items-center group"
+                      className="text-left px-4 sm:px-5 py-3 rounded-xl border border-border hover:border-accent hover:bg-accent/2 transition-all text-[11px] sm:text-xs font-bold text-secondary flex justify-between items-center group gap-4"
                     >
-                      {p} <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="truncate">{p}</span> <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -365,36 +409,20 @@ const StrategistPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[92%] sm:max-w-[80%] flex gap-3 sm:gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                <div className={`max-w-[95%] sm:max-w-[85%] flex gap-2 sm:gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
                     msg.role === 'USER' ? 'bg-card-bg border border-border text-secondary' : 'bg-accent text-white'
                   }`}>
-                    {msg.role === 'USER' ? <User size={16} /> : <Bot size={16} />}
+                    {msg.role === 'USER' ? <User size={14} className="sm:size-16" /> : <Bot size={14} className="sm:size-16" />}
                   </div>
-                  <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                  <div className={`p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed break-words overflow-hidden ${
                     msg.role === 'USER' ? 'bg-foreground text-white' : 'bg-card-bg border border-border text-foreground font-medium'
                   }`}>
-                    {msg.content}
+                    {msg.content || <ThinkingDots />}
                   </div>
                 </div>
               </motion.div>
             ))}
-
-            {isLoading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
-                <div className="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center">
-                  <Bot size={16} />
-                </div>
-                <div className="bg-card-bg border border-border p-4 rounded-2xl flex items-center gap-3">
-                  <div className="flex gap-1">
-                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
-                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
-                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-accent rounded-full" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">Strategist is thinking...</span>
-                </div>
-              </motion.div>
-            )}
           </AnimatePresence>
         </div>
 
@@ -404,26 +432,31 @@ const StrategistPage: React.FC = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               disabled={isLoading || status === 'LAUNCHED'}
-              placeholder={status === 'LAUNCHED' ? "Session closed. Launching campaign..." : "Refine your strategy (e.g. 'Focus only on Mumbai customers')"}
-              className="w-full bg-white border border-border rounded-2xl px-6 py-4 pr-16 outline-none focus:border-accent transition-all font-medium text-sm disabled:opacity-50"
+              placeholder={status === 'LAUNCHED' ? "Session closed. Launching campaign..." : "Refine strategy (e.g. 'Only Mumbai customers')"}
+              className="w-full bg-white border border-border rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3.5 sm:py-4 pr-12 sm:pr-14 outline-none focus:border-accent transition-all font-medium text-xs sm:text-sm disabled:opacity-50"
             />
             <button 
               onClick={handleSendMessage}
               disabled={!input.trim() || isLoading || status === 'LAUNCHED'}
-              className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all ${
+              className={`absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all ${
                 input.trim() && !isLoading && status !== 'LAUNCHED' ? 'bg-accent text-white' : 'bg-border text-secondary'
               }`}
             >
-              <Send size={18} />
+              <Send size={14} className="sm:size-16" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Right Strategy Snapshot */}
-      <div className="w-full xl:w-100 flex flex-col gap-6 h-auto xl:h-full min-w-0">
+      <div className="w-full xl:w-80 2xl:w-100 flex flex-col gap-6 h-auto xl:h-full min-w-0">
         <AnimatePresence mode="wait">
           {latestDraft ? (
             <motion.div 
@@ -431,58 +464,58 @@ const StrategistPage: React.FC = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="flex-1 flex flex-col gap-6 overflow-y-auto pr-0 xl:pr-2"
+              className="flex-1 flex flex-col gap-6 xl:overflow-y-auto pr-0 xl:pr-2 scrollbar-hide pb-6 xl:pb-0"
             >
               {/* Audience Section */}
-              <div className="bg-white p-6 rounded-4xl border border-border shadow-sm">
+              <div className="bg-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl border border-border shadow-sm shrink-0">
                 <div className="flex items-center gap-2 mb-6">
-                  <Users size={18} className="text-accent" />
-                  <h3 className="text-xs font-black uppercase tracking-widest">Audience Discovery</h3>
+                  <Users size={18} className="text-accent shrink-0" />
+                  <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Audience Discovery</h3>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-end border-b border-border pb-4">
-                    <span className="text-[10px] font-bold text-secondary uppercase">Projected Reach</span>
-                    <span className="text-xl font-black">{latestDraft.audience.size.toLocaleString()}</span>
+                  <div className="flex justify-between items-end border-b border-border pb-4 gap-2">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase truncate">Projected Reach</span>
+                    <span className="text-lg sm:text-xl font-black shrink-0">{latestDraft.audience.size.toLocaleString()}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-card-bg rounded-2xl">
-                      <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Spend</span>
-                      <span className="text-xs font-black">${Math.round(latestDraft.audience.avgSpend)}</span>
+                    <div className="p-3 bg-card-bg rounded-2xl min-w-0">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Avg Order</span>
+                      <span className="text-xs font-black truncate block">${Math.round(latestDraft.audience.avgOrderValue || (latestDraft.audience.avgSpend / 10))}</span>
                     </div>
-                    <div className="p-3 bg-card-bg rounded-2xl">
-                      <span className="text-[8px] font-black text-secondary uppercase block mb-1">Churn Risk</span>
-                      <span className="text-xs font-black">{Math.round(latestDraft.audience.avgChurn)}%</span>
+                    <div className="p-3 bg-card-bg rounded-2xl min-w-0">
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Churn Risk</span>
+                      <span className="text-xs font-black truncate block">{Math.round(latestDraft.audience.avgChurn)}%</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Strategy Card */}
-              <div className="bg-white p-6 rounded-4xl border border-border shadow-sm flex-1">
-                <div className="flex items-center gap-2 mb-6">
-                  <Target size={18} className="text-accent" />
-                  <h3 className="text-xs font-black uppercase tracking-widest">Campaign Strategy</h3>
+              <div className="bg-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl border border-border shadow-sm flex-1 min-h-[300px] flex flex-col shrink-0">
+                <div className="flex items-center gap-2 mb-6 shrink-0">
+                  <Target size={18} className="text-accent shrink-0" />
+                  <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Campaign Strategy</h3>
                 </div>
-                <div className="space-y-6">
-                  <div>
-                    <span className="text-[8px] font-black text-secondary uppercase block mb-1">Campaign Name</span>
-                    <p className="text-sm font-black">{latestDraft.name}</p>
+                <div className="space-y-6 flex-1 min-w-0">
+                  <div className="min-w-0">
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Campaign Name</span>
+                    <p className="text-sm font-black break-words line-clamp-2">{latestDraft.name}</p>
                   </div>
-                  <div>
-                    <span className="text-[8px] font-black text-secondary uppercase block mb-1">Reasoning</span>
-                    <p className="text-xs text-secondary leading-relaxed font-medium">
+                  <div className="min-w-0">
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Reasoning</span>
+                    <p className="text-xs text-secondary leading-relaxed font-medium break-words overflow-hidden">
                       {latestDraft.reasoning}
                     </p>
                   </div>
-                  <div>
-                    <span className="text-[8px] font-black text-secondary uppercase block mb-1">Communication</span>
+                  <div className="min-w-0">
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 truncate">Communication</span>
                     <div className="p-3 bg-card-bg rounded-xl border border-border mt-1">
-                      <p className="text-[11px] font-medium italic text-secondary leading-relaxed">
+                      <p className="text-[10px] sm:text-[11px] font-medium italic text-secondary leading-relaxed break-words overflow-hidden">
                         "{latestDraft.message}"
                       </p>
                     </div>
-                    <div className="flex gap-2 mt-3">
-                      <span className="px-2 py-1 bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest rounded-md">
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <span className="px-2 py-1 bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest rounded-md shrink-0">
                         {latestDraft.channel}
                       </span>
                     </div>
@@ -491,17 +524,17 @@ const StrategistPage: React.FC = () => {
               </div>
 
               {/* Action Section */}
-              <div className="bg-foreground text-white p-6 rounded-4xl shadow-xl relative overflow-hidden">
-                <BarChart3 className="absolute -bottom-4 -right-4 w-20 h-20 opacity-10" />
-                <h3 className="text-xs font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
-                <div className="flex justify-between items-end mb-8">
-                  <span className="text-2xl font-black text-success">${latestDraft.forecast.revenue.toLocaleString()}</span>
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Expected Lift</span>
+              <div className="bg-foreground text-white p-5 sm:p-6 rounded-3xl sm:rounded-4xl shadow-xl relative overflow-hidden shrink-0 mt-auto">
+                <BarChart3 className="absolute -bottom-4 -right-4 w-16 h-16 sm:w-20 sm:h-20 opacity-10" />
+                <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
+                <div className="flex justify-between items-end mb-8 gap-2">
+                  <span className="text-xl sm:text-2xl font-black text-success shrink-0">${latestDraft.forecast.revenue.toLocaleString()}</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest text-right">Expected Lift</span>
                 </div>
                 {status === 'LAUNCHED' ? (
                   <button 
                     onClick={() => navigate('/workspace/campaigns')}
-                    className="w-full py-4 bg-success text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-success/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3.5 sm:py-4 bg-success text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-lg shadow-success/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                   >
                     Campaign Running <Play size={14} />
                   </button>
@@ -509,7 +542,7 @@ const StrategistPage: React.FC = () => {
                   <button 
                     onClick={handleLaunch}
                     disabled={isLaunching}
-                    className="w-full py-4 bg-accent text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3.5 sm:py-4 bg-accent text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                   >
                     {isLaunching ? <Loader2 size={16} className="animate-spin" /> : <>Launch Campaign <Rocket size={16} /></>}
                   </button>
@@ -521,12 +554,12 @@ const StrategistPage: React.FC = () => {
               key="placeholder"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex-1 border-2 border-dashed border-border rounded-4xl flex flex-col items-center justify-center p-8 text-center"
+              className="flex-1 border-2 border-dashed border-border rounded-3xl sm:rounded-4xl flex flex-col items-center justify-center p-6 sm:p-8 text-center min-h-[400px]"
             >
-              <div className="w-12 h-12 bg-card-bg rounded-full flex items-center justify-center mb-4 text-secondary/30">
-                <Target size={24} />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-card-bg rounded-full flex items-center justify-center mb-4 text-secondary/30 shrink-0">
+                <Target size={20} className="sm:size-24" />
               </div>
-              <p className="text-[10px] font-black text-secondary/40 uppercase tracking-widest">
+              <p className="text-[9px] sm:text-[10px] font-black text-secondary/40 uppercase tracking-widest">
                 Strategic Summary <br /> will appear here
               </p>
             </motion.div>

@@ -41,6 +41,7 @@ class StrategistResponseFormatter {
       audience: {
         size: draft.audience_snapshot?.audience_size || 0,
         avgSpend: draft.audience_snapshot?.avg_spend || 0,
+        avgOrderValue: draft.audience_snapshot?.avg_order_value || 0,
         avgLoyalty: draft.audience_snapshot?.avg_loyalty || 0,
         avgChurn: draft.audience_snapshot?.avg_churn || 0
       },
@@ -107,7 +108,7 @@ async function chatWithStrategistStream(req, res) {
 
     for (const chunk of chunks) {
       sendEvent("delta", { delta: chunk });
-      await new Promise((resolve) => setTimeout(resolve, 18));
+      await new Promise((resolve) => setTimeout(resolve, 35));
     }
   };
 
@@ -120,6 +121,8 @@ async function chatWithStrategistStream(req, res) {
   req.on("close", closeHandler);
 
   try {
+    sendEvent("processing", { status: "thinking" });
+
     const result = await strategistChatService.processMessage(brandId, sessionId, message);
 
     await sendTextChunks(result.assistantMessage || "");
@@ -147,8 +150,8 @@ async function chatWithStrategistStream(req, res) {
 
 async function getStrategistSession(req, res) {
   try {
-    const { sessionId } = req.params;
-    const sessionState = await strategistChatService.getSessionState(sessionId);
+    const { brandId, sessionId } = req.params;
+    const sessionState = await strategistChatService.getSessionState(brandId, sessionId);
 
     res.json({
       status: "success",
@@ -209,8 +212,8 @@ async function getActiveSessions(req, res) {
 
 async function closeSession(req, res) {
   try {
-    const { sessionId } = req.params;
-    await strategistChatService.closeSession(sessionId);
+    const { brandId, sessionId } = req.params;
+    await strategistChatService.closeSession(brandId, sessionId);
     res.json({ status: "success", message: "Session closed successfully" });
   } catch (error) {
     console.error("Error in closeSession:", error.message);

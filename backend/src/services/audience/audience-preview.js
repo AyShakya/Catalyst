@@ -19,6 +19,7 @@ async function generateAudiencePreview(brandId, filterPlan, datasetSummary) {
     SELECT 
       COUNT(*)::int AS audience_size,
       COALESCE(AVG(total_spend), 0)::numeric(14,2) AS avg_spend,
+      COALESCE(AVG(avg_order_value), 0)::numeric(14,2) AS avg_order_value,
       COALESCE(AVG(total_orders), 0)::numeric(14,2) AS avg_orders,
       COALESCE(AVG(loyalty_score), 0)::numeric(6,2) AS avg_loyalty,
       COALESCE(AVG(churn_score), 0)::numeric(6,2) AS avg_churn
@@ -32,6 +33,7 @@ async function generateAudiencePreview(brandId, filterPlan, datasetSummary) {
   return {
     audience_size: parseInt(metrics.audience_size, 10),
     avg_spend: parseFloat(metrics.avg_spend),
+    avg_order_value: parseFloat(metrics.avg_order_value),
     avg_orders: parseFloat(metrics.avg_orders),
     avg_loyalty: parseFloat(metrics.avg_loyalty),
     avg_churn: parseFloat(metrics.avg_churn),

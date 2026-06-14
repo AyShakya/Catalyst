@@ -21,10 +21,10 @@ const DEFAULT_RATES = {
 function calculateForecast(audienceSize, customRates = {}) {
   const rates = { ...DEFAULT_RATES, ...customRates };
 
-  const delivered = Math.floor(audienceSize * rates.DELIVERY_RATE);
-  const opened = Math.floor(delivered * rates.OPEN_RATE);
-  const clicked = Math.floor(opened * rates.CTR);
-  const purchased = Math.floor(clicked * rates.CONVERSION_RATE);
+  const delivered = Math.round(audienceSize * rates.DELIVERY_RATE);
+  const opened = Math.round(delivered * rates.OPEN_RATE);
+  const clicked = Math.round(opened * rates.CTR);
+  const purchased = Math.round(clicked * rates.CONVERSION_RATE);
 
   return {
     forecast_delivered: delivered,

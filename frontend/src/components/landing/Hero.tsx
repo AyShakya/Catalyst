@@ -17,7 +17,7 @@ const Hero: React.FC = () => {
         </motion.span>
         
         <motion.h1 
-          className="mx-auto mb-8 max-w-[900px] text-6xl font-black leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-8xl"
+          className="mx-auto mb-8 max-w-[900px] text-4xl sm:text-7xl lg:text-8xl font-black leading-[0.95] tracking-tight text-foreground"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}

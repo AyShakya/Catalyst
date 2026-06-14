@@ -19,7 +19,7 @@ class StrategistChatService {
    */
   async processMessage(brandId, sessionId, message) {
     try {
-      // 1. Ensure Session exists and is NOT launched
+      // 1. Ensure Session exists, belongs to brand, and is NOT launched
       let actualSessionId = sessionId;
       if (!actualSessionId) {
         const sessionRes = await query(
@@ -29,10 +29,15 @@ class StrategistChatService {
         actualSessionId = sessionRes.rows[0].id;
       } else {
         const checkRes = await query(
-          "SELECT status FROM strategist_sessions WHERE id = $1",
-          [actualSessionId]
+          "SELECT status FROM strategist_sessions WHERE id = $1 AND brand_id = $2",
+          [actualSessionId, brandId]
         );
-        if (checkRes.rows[0]?.status === 'LAUNCHED') {
+        
+        if (checkRes.rows.length === 0) {
+          throw new Error("Session not found or unauthorized access.");
+        }
+
+        if (checkRes.rows[0].status === 'LAUNCHED') {
           throw new Error("This strategist session is locked as the campaign has already been launched.");
         }
       }
@@ -110,6 +115,9 @@ class StrategistChatService {
         const snapshot = await generateAudiencePreview(brandId, snapshotPlan, summary);
         const forecast = calculateForecast(snapshot.audience_size);
 
+        // Revenue logic: Forecasted conversions * (Audience AOV or Global AOV or default $50)
+        const aov = snapshot.avg_order_value || summary.avg_order_value || 50;
+
         finalDraft = {
           ...aiResponse.draft,
           audience_snapshot: snapshot,
@@ -118,7 +126,7 @@ class StrategistChatService {
             opened: forecast.forecast_opened,
             clicked: forecast.forecast_clicked,
             conversions: forecast.forecast_purchased,
-            revenue: forecast.forecast_purchased * (snapshot.avg_spend || summary.avg_order_value || 0)
+            revenue: Math.round(forecast.forecast_purchased * aov)
           }
         };
         
@@ -179,11 +187,15 @@ class StrategistChatService {
    */
   async launchCampaign(brandId, sessionId) {
     const sessionRes = await query(
-      "SELECT status FROM strategist_sessions WHERE id = $1",
-      [sessionId]
+      "SELECT status FROM strategist_sessions WHERE id = $1 AND brand_id = $2",
+      [sessionId, brandId]
     );
+
+    if (sessionRes.rows.length === 0) {
+      throw new Error("Session not found or unauthorized access.");
+    }
     
-    if (sessionRes.rows[0]?.status === 'LAUNCHED') {
+    if (sessionRes.rows[0].status === 'LAUNCHED') {
       throw new Error("Campaign has already been launched for this session.");
     }
 
@@ -249,9 +261,9 @@ class StrategistChatService {
   /**
    * Fetches the latest state of a session.
    */
-  async getSessionState(sessionId) {
+  async getSessionState(brandId, sessionId) {
     const [sessionRes, messagesRes, draftRes] = await Promise.all([
-      query("SELECT status FROM strategist_sessions WHERE id = $1", [sessionId]),
+      query("SELECT status FROM strategist_sessions WHERE id = $1 AND brand_id = $2", [sessionId, brandId]),
       query(
         "SELECT role, content, created_at FROM strategist_messages WHERE session_id = $1 ORDER BY created_at ASC",
         [sessionId]
@@ -262,8 +274,12 @@ class StrategistChatService {
       )
     ]);
 
+    if (sessionRes.rows.length === 0) {
+      throw new Error("Session not found or unauthorized access.");
+    }
+
     return {
-      status: sessionRes.rows[0]?.status || 'ACTIVE',
+      status: sessionRes.rows[0].status || 'ACTIVE',
       messages: messagesRes.rows,
       latestDraft: draftRes.rows[0]
     };
@@ -292,13 +308,13 @@ class StrategistChatService {
   /**
    * Closes or rejects an active session.
    */
-  async closeSession(sessionId) {
+  async closeSession(brandId, sessionId) {
     const res = await query(
-      "DELETE FROM strategist_sessions WHERE id = $1 AND status = 'ACTIVE' RETURNING id",
-      [sessionId]
+      "DELETE FROM strategist_sessions WHERE id = $1 AND brand_id = $2 AND status = 'ACTIVE' RETURNING id",
+      [sessionId, brandId]
     );
     if (res.rows.length === 0) {
-      throw new Error("Session not found or already launched.");
+      throw new Error("Session not found or already launched/unauthorized.");
     }
     return { success: true };
   }

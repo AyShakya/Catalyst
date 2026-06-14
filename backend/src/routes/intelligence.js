@@ -26,10 +26,10 @@ router.post("/:brandId/strategist/chat/stream", strategistController.chatWithStr
 router.post("/:brandId/strategist/chat", strategistController.chatWithStrategist);
 
 /**
- * @route   GET /api/intelligence/strategist/session/:sessionId
+ * @route   GET /api/intelligence/:brandId/strategist/session/:sessionId
  * @desc    Retrieves the full history and latest campaign draft for a strategist session.
  */
-router.get("/strategist/session/:sessionId", strategistController.getStrategistSession);
+router.get("/:brandId/strategist/session/:sessionId", strategistController.getStrategistSession);
 
 /**
  * @route   GET /api/intelligence/:brandId/strategist/sessions
@@ -38,10 +38,10 @@ router.get("/strategist/session/:sessionId", strategistController.getStrategistS
 router.get("/:brandId/strategist/sessions", strategistController.getActiveSessions);
 
 /**
- * @route   DELETE /api/intelligence/strategist/session/:sessionId
+ * @route   DELETE /api/intelligence/:brandId/strategist/session/:sessionId
  * @desc    Closes/rejects an active session.
  */
-router.delete("/strategist/session/:sessionId", strategistController.closeSession);
+router.delete("/:brandId/strategist/session/:sessionId", strategistController.closeSession);
 
 /**
  * @route   POST /api/intelligence/:brandId/strategist/launch

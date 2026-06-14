@@ -83,16 +83,16 @@ const OverviewPage: React.FC = () => {
   const { summary, distributions } = data || {};
 
   return (
-    <div className="space-y-8 sm:space-y-10 pb-12">
+    <div className="space-y-6 sm:space-y-10 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter">Business Health</h1>
-          <p className="text-secondary font-medium">Catalyst Intelligence Interface</p>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-6 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tighter truncate sm:whitespace-normal">Business Health</h1>
+          <p className="text-secondary font-medium text-sm sm:text-base">Catalyst Intelligence Interface</p>
         </div>
-        <div className="bg-white border border-border px-4 py-2 rounded-2xl flex items-center gap-2 w-fit">
-          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Active Intelligence Layer</span>
+        <div className="bg-white border border-border px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-2 w-fit shrink-0 shadow-sm">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success animate-pulse shrink-0" />
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Active Intel Layer</span>
         </div>
       </div>
 
@@ -100,17 +100,17 @@ const OverviewPage: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-accent text-white p-5 sm:p-8 rounded-3xl sm:rounded-[40px] shadow-xl relative overflow-hidden"
+        className="bg-accent text-white p-6 sm:p-8 rounded-3xl sm:rounded-[40px] shadow-xl relative overflow-hidden group"
       >
-        <Sparkles className="absolute -top-8 -right-8 sm:-top-4 sm:-right-4 w-36 h-36 sm:w-48 sm:h-48 opacity-10 rotate-12" />
+        <Sparkles className="absolute -top-10 -right-10 sm:-top-4 sm:-right-4 w-32 h-32 sm:w-48 sm:h-48 opacity-10 rotate-12 transition-transform duration-700 group-hover:rotate-45" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
-            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md shrink-0">
               <Zap size={20} />
             </div>
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.3em]">Executive Summary</span>
+            <span className="text-[9px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.3em]">Executive Summary</span>
           </div>
-          <p className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed max-w-4xl">
+          <p className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed max-w-4xl break-words">
             {executiveBrief || "Analyzing your business performance to generate insights..."}
           </p>
         </div>
@@ -119,10 +119,10 @@ const OverviewPage: React.FC = () => {
       {/* V2: Opportunity Feed */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] font-black text-secondary uppercase tracking-[0.3em]">Growth Opportunities</span>
+          <span className="text-[9px] sm:text-[10px] font-black text-secondary uppercase tracking-[0.3em] shrink-0">Growth Opportunities</span>
           <div className="flex-1 h-px bg-border" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           <AnimatePresence>
             {opportunities.map((opp, i) => (
               <motion.div 
@@ -130,27 +130,27 @@ const OverviewPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-white p-6 rounded-3xl border border-border shadow-sm flex flex-col justify-between group hover:border-accent transition-all"
+                className="bg-white p-5 sm:p-6 rounded-3xl border border-border shadow-sm flex flex-col justify-between group hover:border-accent hover:shadow-lg transition-all min-w-0"
               >
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
+                <div className="min-w-0">
+                  <div className="flex justify-between items-start mb-4 gap-2">
+                    <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md shrink-0 ${
                       opp.severity === 'CRITICAL' ? 'bg-error/10 text-error' : 
                       opp.severity === 'HIGH' ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent'
                     }`}>
                       {opp.severity} Impact
                     </span>
-                    <ShieldAlert size={16} className="text-border group-hover:text-accent transition-colors" />
+                    <ShieldAlert size={16} className="text-border group-hover:text-accent transition-colors shrink-0" />
                   </div>
-                  <h4 className="text-sm font-black uppercase tracking-tight mb-2 leading-snug">{opp.title}</h4>
-                  <p className="text-xs text-secondary font-medium leading-relaxed mb-6">{opp.description}</p>
+                  <h4 className="text-sm font-black uppercase tracking-tight mb-2 leading-snug break-words line-clamp-2">{opp.title}</h4>
+                  <p className="text-[11px] sm:text-xs text-secondary font-medium leading-relaxed mb-6 break-words line-clamp-3">{opp.description}</p>
                 </div>
                 <button 
                   onClick={() => navigate(`/workspace/strategist?prompt=${encodeURIComponent(opp.title)}`)}
-                  className="flex items-center justify-between w-full p-4 bg-card-bg rounded-2xl group-hover:bg-accent group-hover:text-white transition-all"
+                  className="flex items-center justify-between w-full p-3.5 sm:p-4 bg-card-bg rounded-2xl group-hover:bg-accent group-hover:text-white transition-all shrink-0"
                 >
-                  <span className="text-[10px] font-black uppercase tracking-widest">Execute Strategy</span>
-                  <ArrowRight size={14} />
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Execute Strategy</span>
+                  <ArrowRight size={14} className="shrink-0" />
                 </button>
               </motion.div>
             ))}
@@ -159,7 +159,7 @@ const OverviewPage: React.FC = () => {
       </div>
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
         <KPICard 
           title="Total Customers" 
           value={summary?.total_customers?.toLocaleString() || '0'} 
@@ -188,28 +188,28 @@ const OverviewPage: React.FC = () => {
 
       {/* Charts & Distributions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        <div className="lg:col-span-2 bg-white p-5 sm:p-8 rounded-4xl border border-border shadow-sm min-w-0">
+        <div className="lg:col-span-2 bg-white p-5 sm:p-8 rounded-3xl sm:rounded-4xl border border-border shadow-sm min-w-0">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6 sm:mb-10">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-secondary">Revenue Distribution</h3>
-            <span className="text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg w-fit">LTV Segmentation</span>
+            <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-secondary">Revenue Distribution</h3>
+            <span className="text-[9px] sm:text-[10px] font-bold text-secondary uppercase bg-card-bg px-3 py-1 rounded-lg w-fit shrink-0">LTV Segmentation</span>
           </div>
-          <div className="h-64 sm:h-80 min-w-0">
+          <div className="h-64 sm:h-80 min-w-0 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={distributions?.total_spend || []}>
+              <BarChart data={distributions?.total_spend || []} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#525252' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#525252' }} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#525252' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#525252' }} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="count" fill="#4f46e5" radius={[8, 8, 0, 0]} barSize={40} />
+                <Bar dataKey="count" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={Math.min(40, 100 / (distributions?.total_spend?.length || 1))} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="space-y-6 sm:space-y-8 min-w-0">
-          <div className="bg-white p-5 sm:p-8 rounded-4xl border border-border shadow-sm min-w-0">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl sm:rounded-4xl border border-border shadow-sm min-w-0">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary mb-8">Loyalty DNA</h3>
-            <div className="h-56 sm:h-64 min-w-0">
+            <div className="h-56 sm:h-64 min-w-0 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -227,22 +227,25 @@ const OverviewPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-foreground text-white p-5 sm:p-8 rounded-4xl shadow-xl">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-6">Retention Pulse</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold opacity-60">High Risk</span>
-                <span className="text-sm font-black text-error">12.4%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold opacity-60">Healthy</span>
-                <span className="text-sm font-black text-success">68.2%</span>
-              </div>
-              <div className="pt-4 border-t border-white/10 mt-4 flex justify-between items-center group cursor-pointer" onClick={() => navigate('/workspace/strategist?prompt=Improve+customer+retention')}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-accent">Optimize Retention</span>
-                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          <div className="bg-foreground text-white p-6 sm:p-8 rounded-3xl sm:rounded-4xl shadow-xl relative overflow-hidden group">
+            <div className="relative z-10">
+              <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-6">Retention Pulse</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] sm:text-xs font-bold opacity-60">High Risk</span>
+                  <span className="text-xs sm:text-sm font-black text-error">12.4%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] sm:text-xs font-bold opacity-60">Healthy</span>
+                  <span className="text-xs sm:text-sm font-black text-success">68.2%</span>
+                </div>
+                <div className="pt-4 border-t border-white/10 mt-4 flex justify-between items-center cursor-pointer group/btn" onClick={() => navigate('/workspace/strategist?prompt=Improve+customer+retention')}>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-accent">Optimize Retention</span>
+                  <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform shrink-0" />
+                </div>
               </div>
             </div>
+            <Zap className="absolute -bottom-6 -right-6 w-24 h-24 opacity-5 rotate-12" />
           </div>
         </div>
       </div>
