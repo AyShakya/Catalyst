@@ -52,7 +52,7 @@ const limiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests from this IP, please try again after 15 minutes" }
 });
-// app.use("/api/", limiter);
+app.use("/api/", limiter);
 
 app.use("/api/upload", uploadRoutes);
 app.use("/api/metrics", metricsRoutes);
