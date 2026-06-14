@@ -4,6 +4,8 @@ import { ArrowRight, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Hero: React.FC = () => {
+  const hasWorkspace = !!localStorage.getItem('catalyst_brand_id');
+
   return (
     <section className="relative overflow-hidden bg-background py-32 text-center lg:py-48">
       <div className="container mx-auto px-6">
@@ -41,8 +43,8 @@ const Hero: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <Link to="/setup" className="btn btn-primary w-full sm:w-auto">
-            Launch Workspace <ArrowRight size={18} />
+          <Link to={hasWorkspace ? "/workspace" : "/setup"} className="btn btn-primary w-full sm:w-auto">
+            {hasWorkspace ? 'Return to Workspace' : 'Launch Workspace'} <ArrowRight size={18} />
           </Link>
           <button className="btn btn-secondary w-full sm:w-auto">
             Watch Demo <Play size={18} fill="currentColor" />

@@ -22,6 +22,8 @@ const Navbar: React.FC = () => {
     setIsOpen(false);
   }, [location]);
 
+  const hasWorkspace = !!localStorage.getItem('catalyst_brand_id');
+
   // Don't show this navbar in the Workspace (it has its own sidebar)
   if (location.pathname.startsWith('/workspace')) {
     return null;
@@ -48,10 +50,10 @@ const Navbar: React.FC = () => {
           <Link to="/" className="text-xs font-black uppercase tracking-widest text-secondary hover:text-foreground transition-colors">Solutions</Link>
           <Link to="/" className="text-xs font-black uppercase tracking-widest text-secondary hover:text-foreground transition-colors">Pricing</Link>
           <Link 
-            to="/setup" 
+            to={hasWorkspace ? "/workspace" : "/setup"} 
             className="bg-foreground text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-accent transition-all shadow-lg shadow-black/5 flex items-center gap-2"
           >
-            Launch Workspace <Rocket size={14} />
+            {hasWorkspace ? 'Return to Workspace' : 'Launch Workspace'} <Rocket size={14} />
           </Link>
         </div>
 
@@ -77,10 +79,10 @@ const Navbar: React.FC = () => {
             <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Solutions</Link>
             <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Pricing</Link>
             <Link 
-              to="/setup" 
+              to={hasWorkspace ? "/workspace" : "/setup"}  
               className="bg-accent text-white px-6 py-4 rounded-xl text-center font-black uppercase tracking-widest"
             >
-              Launch Workspace
+              {hasWorkspace ? 'Return to Workspace' : 'Launch Workspace'}
             </Link>
           </motion.div>
         )}
