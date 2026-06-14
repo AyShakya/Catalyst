@@ -1,7 +1,9 @@
 const { query } = require("../../config/db");
 const { validateOrderRecord } = require("../../utils/validation");
+const format = require("pg-format");
 
 const MAX_ERROR_DETAILS = 50;
+const CHUNK_SIZE = 1000;
 
 async function ingestOrders(records, brandId, db = { query }) {
   const results = {
@@ -13,6 +15,9 @@ async function ingestOrders(records, brandId, db = { query }) {
     errors: [],
   };
 
+  const validRecords = [];
+
+  // Phase 1: In-memory Validation and collection of external_customer_ids
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
     const validation = validateOrderRecord(record);
@@ -26,80 +31,86 @@ async function ingestOrders(records, brandId, db = { query }) {
       });
       continue;
     }
+    
+    validRecords.push(record);
+  }
 
+  // Phase 2: Bulk Customer ID Lookup
+  const externalCustomerIds = [...new Set(validRecords.map(r => r.external_customer_id))];
+  const customerMap = new Map();
+  
+  if (externalCustomerIds.length > 0) {
     try {
-      const customer = await findCustomerByExternalId(
+      const lookupSql = format(
+        "SELECT id, external_customer_id FROM customers WHERE brand_id = %L AND external_customer_id IN (%L)",
         brandId,
-        record.external_customer_id,
-        db
+        externalCustomerIds
       );
+      const lookupRes = await db.query(lookupSql);
+      lookupRes.rows.forEach(row => {
+        customerMap.set(row.external_customer_id, row.id);
+      });
+    } catch (lookupError) {
+      console.error("Bulk customer lookup error:", lookupError);
+      // If lookup fails, we can't map orders
+      results.failed = results.total_records;
+      addError(results, { error: `Bulk customer lookup failed: ${lookupError.message}` });
+      return results;
+    }
+  }
 
-      if (!customer) {
-        results.failed++;
-        addError(results, {
-          row: i + 2,
-          record: record.external_order_id,
-          error: `Customer not found: ${record.external_customer_id}`,
-        });
-        continue;
-      }
-
-      const existing = await findExistingOrder(
-        brandId,
-        record.external_order_id,
-        db
-      );
-
-      if (existing) {
-        results.duplicates++;
-      } else {
-        await createOrder(brandId, customer.id, record, db);
-        results.successful++;
-      }
-    } catch (error) {
+  // Phase 3: Chunked Bulk Upserts
+  const preparedOrders = [];
+  for (const record of validRecords) {
+    const internalCustomerId = customerMap.get(record.external_customer_id);
+    
+    if (!internalCustomerId) {
       results.failed++;
       addError(results, {
-        row: i + 2,
         record: record.external_order_id,
-        error: error.message,
+        error: `Customer not found: ${record.external_customer_id}. Orders require pre-existing customers.`,
+      });
+      continue;
+    }
+    
+    preparedOrders.push([
+      brandId,
+      internalCustomerId,
+      record.external_order_id,
+      parseFloat(record.amount) || 0,
+      record.currency || "USD",
+      record.order_date,
+      record.status || "COMPLETED"
+    ]);
+  }
+
+  for (let i = 0; i < preparedOrders.length; i += CHUNK_SIZE) {
+    const chunk = preparedOrders.slice(i, i + CHUNK_SIZE);
+    
+    try {
+      // Bulk Insert with Upsert on (brand_id, external_order_id)
+      const sql = format(
+        `INSERT INTO orders 
+         (brand_id, customer_id, external_order_id, amount, currency, order_date, status)
+         VALUES %L
+         ON CONFLICT (brand_id, external_order_id) 
+         WHERE external_order_id IS NOT NULL
+         DO NOTHING`,
+        chunk
+      );
+      
+      await db.query(sql);
+      results.successful += chunk.length;
+    } catch (error) {
+      console.error("Bulk order ingestion error:", error);
+      results.failed += chunk.length;
+      addError(results, {
+        error: `Chunk processing failed: ${error.message}`,
       });
     }
   }
 
   return results;
-}
-
-async function findCustomerByExternalId(brandId, externalId, db = { query }) {
-  const res = await db.query(
-    "SELECT id FROM customers WHERE brand_id = $1 AND external_customer_id = $2",
-    [brandId, externalId]
-  );
-  return res.rows[0] || null;
-}
-
-async function findExistingOrder(brandId, externalOrderId, db = { query }) {
-  const res = await db.query(
-    "SELECT id FROM orders WHERE brand_id = $1 AND external_order_id = $2",
-    [brandId, externalOrderId]
-  );
-  return res.rows[0] || null;
-}
-
-async function createOrder(brandId, customerId, record, db = { query }) {
-  await db.query(
-    `INSERT INTO orders 
-    (brand_id, customer_id, external_order_id, amount, currency, order_date, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [
-      brandId,
-      customerId,
-      record.external_order_id,
-      parseFloat(record.amount) || 0,
-      record.currency || "USD",
-      record.order_date,
-      record.status || "COMPLETED",
-    ]
-  );
 }
 
 function addError(results, error) {
