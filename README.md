@@ -1,25 +1,68 @@
-# Catalyst
+# Catalyst Intelligence OS
 
----
+## Problem
+Brands struggle to identify the right audience segments and craft personalized, high-converting campaigns across fragmented data silos. Traditional CRMs require manual segment building and repetitive message drafting, leading to slow execution and missed growth opportunities.
 
-## 📈 Scale Assumptions & Architectural Trade-offs
+## Solution
+Catalyst is an AI-native CRM that empowers marketers to architect, launch, and analyze multi-channel campaigns through natural language. By integrating raw customer data with an autonomous intelligence layer, Catalyst transforms data ingestion into actionable strategy in seconds.
 
-During the development of Catalyst V2, several conscious architectural decisions were made to prioritize rapid prototyping and "AI-Native" UX while maintaining a clear roadmap for production scale.
+## Features
+- Chunked Bulk Data Ingestion: High-performance processing for large-scale customer and order history.
+- Autonomous Opportunity Detection: SQL-based detectors identify VIP churn, one-time buyers, and regional trends.
+- Conversational Strategy Interface: An AI-driven chat environment for campaign planning and versioning.
+- Executive Health Dashboard: Real-time visualization of business KPIs, loyalty scores, and revenue DNA.
+- Multi-Channel Dispatch: Integrated delivery system for WhatsApp, SMS, and Email campaigns.
+- Real-Time Analytics: Live tracking of delivery, open, and conversion rates with AI-modeled forecasting.
 
-### 1. Concurrency & Processing
-*   **Current State**: Campaigns are dispatched using Node.js `setImmediate` background loops. This works efficiently for audiences up to ~50k users.
-*   **Scale Trade-off**: For 1M+ users, a direct loop would risk blocking the Node.js event loop.
-*   **Production Path**: Move campaign dispatch to a dedicated **Task Queue (Redis/BullMQ)** with worker clusters to ensure the API remains responsive during high-volume dispatches.
+## Architecture
 
-### 2. Memory Management
-*   **Current State**: Pending communications are fetched into memory for dispatching.
-*   **Scale Trade-off**: Large campaigns could cause Out-of-Memory (OOM) errors.
-*   **Production Path**: Implement **Cursor-based Batching** (fetching 500-1000 records at a time) to maintain a flat memory profile regardless of audience size.
+```text
+[ Data Ingestion Layer ] -> [ Analytical Engine ] -> [ Intelligence Layer ]
+       (CSV/Bulk)            (Postgres/CTEs)         (AI Strategist)
+                                   |                       |
+                                   v                       v
+[ Business Health UI ] <- [ Metrics Registry ] <- [ Campaign Dispatcher ]
+    (React/Vite)                                    (Channel Service)
+```
 
-### 3. Intelligence & Analytics
-*   **Current State**: Weekly Executive Briefs use **Lazy Evaluation with a 7-day Cache**. This eliminates redundant LLM calls (OpenRouter) and ensures instant dashboard loads for returning users.
-*   **Current State**: Opportunity detection uses **Deterministic Heuristics (SQL detectors)** instead of raw LLM scanning, ensuring 100% accuracy and sub-millisecond performance on large datasets.
+## AI Capabilities
 
-### 4. Data Integrity
-*   **Idempotency**: The Webhook Controller uses a **Status Priority Map** to ensure events are processed in order (e.g., a `DELIVERED` event cannot overwrite an `OPENED` state if it arrives late).
-*   **PII Security**: The system "freezes" the audience into a separate table before dispatch, abstracting sensitive customer data from the active campaign dashboard.
+### AI Audience Generation
+The system utilizes LLM workflows to translate natural language goals (e.g., "Target high-spend customers in Mumbai who are at risk of churning") into precise database filters. This eliminates the need for manual SQL or complex segment builders.
+
+### AI Message Creation
+Catalyst generates personalized message templates for WhatsApp, SMS, and Email. The AI adapts the tone and content based on the campaign's specific goals and the target segment's behavior (e.g., urgency for churned users, premium tone for VIPs).
+
+### AI Campaign Recommendations
+Through the Opportunity Feed, the system proactively suggests campaign strategies based on identified business gaps. It analyzes customer lifetime value and purchase frequency to recommend specific interventions.
+
+### AI Channel Recommendations
+The Campaign Intelligence service aggregates historical performance data across different goals. The AI uses this data to recommend the most effective communication channel (e.g., Email for newsletters vs. SMS for flash sales) to maximize conversion rates.
+
+## Scale Considerations
+
+### Current Assumptions and Constraints
+- Dataset Scale: Optimized for up to 10,000 customers per brand.
+- Campaign Volume: Designed to support 100 campaign launches per day.
+- Delivery Model: Utilizes simulated delivery loops for rapid prototyping and feedback.
+- Processing: Current synchronous ingestion assumes datasets of up to 25,000 records per upload to stay within standard HTTP timeout windows (30-60 seconds).
+
+### Production Roadmap Improvements
+- Event Streaming: Integration of Apache Kafka for high-throughput, asynchronous event processing.
+- Advanced Caching: Implementation of Redis for distributed session management and real-time analytical caching.
+- Background Workers: Migration of data ingestion and campaign dispatching to dedicated worker clusters (e.g., BullMQ) to handle 1M+ records.
+- Event Sourcing: Transitioning the communication log to an event-sourced architecture for absolute data auditability.
+- Horizontal Scaling: Containerized service architecture designed for elastic scaling across Kubernetes clusters.
+
+## Technical Stack
+
+### Frontend
+- React 19, TypeScript, Vite 8
+- Tailwind CSS, Framer Motion
+- Recharts, Lucide React
+
+### Backend
+- Node.js, Express 5
+- PostgreSQL (Analytical CTEs)
+- OpenRouter AI (LLM Orchestration)
+- pg-format (Bulk SQL Optimization)
