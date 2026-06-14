@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const app = express();
 const PORT = 3001;
-const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL || "http://localhost:3000/api/webhook/events";
+const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL || "https://catalyst-backend-ldvn.onrender.com/api/webhook/events";
 
 app.use(express.json());
 
