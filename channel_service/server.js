@@ -4,7 +4,7 @@ const axios = require("axios");
 const crypto = require("crypto");
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL || "https://catalyst-backend-ldvn.onrender.com/api/webhook/events";
 
 app.use(express.json());
