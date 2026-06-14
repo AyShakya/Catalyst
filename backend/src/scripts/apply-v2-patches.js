@@ -46,6 +46,19 @@ async function patch() {
       CHECK (event_type IN ('SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'PURCHASED', 'FAILED'))
     `);
 
+    // 3. Create executive_briefs table for caching
+    console.log('Creating executive_briefs table if it does not exist...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS executive_briefs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+        brief_text TEXT NOT NULL,
+        key_metrics JSONB,
+        generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_executive_briefs_brand_id ON executive_briefs (brand_id)');
+
     await client.query('COMMIT');
     console.log('Database patched successfully for V2 changes.');
   } catch (err) {

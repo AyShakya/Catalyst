@@ -291,3 +291,14 @@ CREATE TABLE IF NOT EXISTS campaign_intelligence_summaries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_campaign_intel_brand_id ON campaign_intelligence_summaries (brand_id);
+
+CREATE TABLE IF NOT EXISTS executive_briefs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  brief_text TEXT NOT NULL,
+  key_metrics JSONB,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_executive_briefs_brand_id ON executive_briefs (brand_id);
+

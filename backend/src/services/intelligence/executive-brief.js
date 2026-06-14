@@ -13,6 +13,31 @@ class ExecutiveBriefService {
    */
   async generateBrief(brandId) {
     try {
+      // 0. Check Cache First (Lazy Evaluation)
+      // We consider a brief valid if it was generated within the last 7 days
+      const cacheResult = await query(
+        "SELECT * FROM executive_briefs WHERE brand_id = $1 ORDER BY generated_at DESC LIMIT 1",
+        [brandId]
+      );
+      
+      if (cacheResult.rows.length > 0) {
+        const cachedBrief = cacheResult.rows[0];
+        const ageInMs = new Date() - new Date(cachedBrief.generated_at);
+        const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+        
+        if (ageInDays < 7) {
+          console.log(`Returning cached executive brief for brand ${brandId} (Age: ${ageInDays.toFixed(1)} days)`);
+          return {
+            brief: cachedBrief.brief_text,
+            key_metrics: cachedBrief.key_metrics,
+            generated_at: cachedBrief.generated_at,
+            cached: true
+          };
+        }
+      }
+
+      console.log(`Generating new executive brief for brand ${brandId}`);
+
       // 1. Gather all required context data
       const [summaryResult, insightsResult, campaignIntell] = await Promise.all([
         query("SELECT * FROM dataset_summary WHERE brand_id = $1", [brandId]),
@@ -71,10 +96,21 @@ class ExecutiveBriefService {
         response_format: { type: "json_object" } // Even though it's prose, we can ask for a structured response
       });
 
+      const generatedBrief = aiResponse.executive_summary;
+      const generatedAt = new Date();
+
+      // 3. Save to Cache
+      await query(
+        `INSERT INTO executive_briefs (brand_id, brief_text, key_metrics, generated_at) 
+         VALUES ($1, $2, $3, $4)`,
+        [brandId, generatedBrief, JSON.stringify(executiveContext), generatedAt]
+      );
+
       return {
-        brief: aiResponse.executive_summary,
+        brief: generatedBrief,
         key_metrics: executiveContext,
-        generated_at: new Date()
+        generated_at: generatedAt,
+        cached: false
       };
 
     } catch (error) {
