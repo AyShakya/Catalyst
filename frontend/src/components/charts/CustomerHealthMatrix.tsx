@@ -18,11 +18,12 @@ const COLORS = {
 };
 
 const CustomerHealthMatrix: React.FC<CustomerHealthMatrixProps> = React.memo(({ data }) => {
-  const formatTooltip = (value: any, name: string, props: any) => {
-    if (name === 'Loyalty') return [`${value}/100`, 'Loyalty Score'];
-    if (name === 'Churn Risk') return [`${value}%`, 'Churn Risk'];
-    if (name === 'Spend') return [`$${value.toLocaleString()}`, 'Total Spend'];
-    return [value, name];
+  const formatTooltip = (value: any, name: any): [string, string] => {
+    const nameStr = String(name || '');
+    if (nameStr === 'Loyalty') return [`${value}/100`, 'Loyalty Score'];
+    if (nameStr === 'Churn Risk') return [`${value}%`, 'Churn Risk'];
+    if (nameStr === 'Spend') return [`$${Number(value || 0).toLocaleString()}`, 'Total Spend'];
+    return [String(value || ''), nameStr];
   };
 
   const getPointColor = (point: HealthMatrixPoint) => {

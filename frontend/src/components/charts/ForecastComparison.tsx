@@ -46,7 +46,7 @@ const ForecastComparison: React.FC<ForecastComparisonProps> = React.memo(({ fore
           <Tooltip 
             cursor={{ fill: '#f8fafc' }}
             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '12px' }}
-            formatter={(value: number) => [formatNumber(value, { compact: true }), '']}
+            formatter={(value: any) => [formatNumber(Number(value || 0), { compact: true }), '']}
           />
           <Legend 
             verticalAlign="top" 

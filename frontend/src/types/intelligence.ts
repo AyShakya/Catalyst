@@ -49,6 +49,9 @@ export interface BrandAnalytics {
     total_customers: number;
     total_orders: number;
     total_revenue: number;
+    avg_spend: number;
+    median_spend: number;
+    avg_orders_per_customer: number;
     avg_order_value: number;
     avg_loyalty_score: number;
     avg_churn_score: number;
