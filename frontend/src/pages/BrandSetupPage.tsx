@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles } from 'lucide-react';
+import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrand, uploadData } from '../services/brandService';
 import { fileToBase64 } from '../utils/fileUtils';
@@ -744,6 +744,23 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
               </motion.div>
             ))}
           </div>
+
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8 flex gap-3 items-start p-4 bg-accent/5 border border-accent/10 rounded-2xl text-accent"
+          >
+            <AlertCircle size={16} className="shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-1">
+              <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase">
+                Processing Large Datasets
+              </p>
+              <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
+                Large file sizes will take extra time to complete processing. Please keep waiting and do not close this window while Catalyst builds your workspace.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </div>
     );
@@ -795,6 +812,18 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
             <div className="space-y-4">
               <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Data Ingestion *</label>
               
+              <div className="flex gap-3 items-start p-4 bg-danger/5 border border-danger/10 rounded-2xl text-danger">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase">
+                    Schema Requirement Warning
+                  </p>
+                  <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
+                    Please ensure your uploaded CSV files exactly match the expected schema columns and headers. Any deviation will result in database ingestion failure.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div 
                   {...getCustomerProps()} 

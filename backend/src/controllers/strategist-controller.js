@@ -125,13 +125,19 @@ async function chatWithStrategistStream(req, res) {
 
     const result = await strategistChatService.processMessage(brandId, sessionId, message);
 
+    sendEvent("processing", { 
+      status: "streaming", 
+      action: result.action,
+      draft: result.draft ? StrategistResponseFormatter.formatDraft(result.draft, result.version) : null
+    });
+
     await sendTextChunks(result.assistantMessage || "");
 
     sendEvent("final", {
       sessionId: result.sessionId,
       version: result.version,
       message: result.assistantMessage,
-      draft: StrategistResponseFormatter.formatDraft(result.draft),
+      draft: StrategistResponseFormatter.formatDraft(result.draft, result.version),
       history: result.history,
     });
 

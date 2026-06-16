@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Sparkles, Send, Loader2, Target, Users, 
   MessageSquare, BarChart3, Rocket, Trash2, Edit3,
@@ -34,6 +34,7 @@ const ThinkingDots = () => (
 
 const StrategistPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,6 +44,7 @@ const StrategistPage: React.FC = () => {
   const [isLaunching, setIsLaunching] = useState(false);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isBuildingCampaign, setIsBuildingCampaign] = useState(false);
   const streamingAssistantIndexRef = useRef<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,11 +59,20 @@ const StrategistPage: React.FC = () => {
     const controller = new AbortController();
 
     // Recover session from URL if provided (v2 support)
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(location.search);
     const sid = urlParams.get('session');
     if (sid) {
-      loadSession(sid, controller.signal);
+      if (sid !== sessionId) {
+        loadSession(sid, controller.signal);
+      }
     } else {
+      if (sessionId !== null) {
+        setSessionId(null);
+        setMessages([]);
+        setLatestDraft(null);
+        setStatus('ACTIVE');
+        setIsBuildingCampaign(false);
+      }
       fetchActiveSessions(brandId);
     }
 
@@ -72,7 +83,7 @@ const StrategistPage: React.FC = () => {
     }
 
     return () => controller.abort();
-  }, [navigate]);
+  }, [navigate, location.search, sessionId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -94,6 +105,7 @@ const StrategistPage: React.FC = () => {
   const loadSession = async (sid: string, signal?: AbortSignal) => {
     try {
       setIsLoading(true);
+      setIsBuildingCampaign(true);
       const brandId = localStorage.getItem('catalyst_brand_id');
       if (!brandId) return;
 
@@ -110,6 +122,7 @@ const StrategistPage: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+      setIsBuildingCampaign(false);
     }
   };
 
@@ -138,7 +151,7 @@ const StrategistPage: React.FC = () => {
     setMessages([]);
     setLatestDraft(null);
     setStatus('ACTIVE');
-    window.history.replaceState(null, '', window.location.pathname);
+    navigate(window.location.pathname, { replace: true });
 
     try {
       await closeSession(brandId, targetSessionId);
@@ -154,10 +167,20 @@ const StrategistPage: React.FC = () => {
 
     // 2. Lock UI immediately
     setIsLoading(true);
+    
+    const userMsg = input.trim();
+    const conversationalPatterns = [
+      /^\s*(hi|hello|hey|greetings|good morning|good afternoon|good evening|yo)\b/i,
+      /^\s*(how are you|how's it going|what's up|whats up|howdy)\b/i,
+      /^\s*(who are you|what is your name|what can you do|help)\b/i,
+      /^\s*(thanks|thank you|cool|ok|okay|great|awesome|perfect|yes|no)\b/i
+    ];
+    const isCampaignReq = latestDraft !== null || !conversationalPatterns.some(pattern => pattern.test(userMsg));
+    setIsBuildingCampaign(isCampaignReq);
+    
     const controller = new AbortController();
 
     const brandId = localStorage.getItem('catalyst_brand_id')!;
-    const userMsg = input.trim();
     setInput('');
 
     // 3. Optimistic UI: Add user message + placeholder for assistant
@@ -190,6 +213,16 @@ const StrategistPage: React.FC = () => {
               return next;
             });
           },
+          onProcessing: (payload) => {
+            if (payload.status === 'streaming') {
+              if (payload.action === 'UPDATE_DRAFT' && payload.draft) {
+                setLatestDraft(payload.draft);
+                setIsBuildingCampaign(true);
+              } else {
+                setIsBuildingCampaign(false);
+              }
+            }
+          },
           onError: (errorMessage) => {
             throw new Error(errorMessage);
           },
@@ -205,7 +238,7 @@ const StrategistPage: React.FC = () => {
         if (fallbackRes.status === 'success') {
           if (!sessionId && fallbackRes.data.sessionId) {
             setSessionId(fallbackRes.data.sessionId);
-            window.history.replaceState(null, '', `?session=${fallbackRes.data.sessionId}`);
+            navigate(`?session=${fallbackRes.data.sessionId}`, { replace: true });
           }
           setMessages(fallbackRes.data.history);
           setLatestDraft(fallbackRes.data.draft);
@@ -219,7 +252,7 @@ const StrategistPage: React.FC = () => {
       if (streamedFinal) {
         if (!sessionId && streamedFinal.sessionId) {
           setSessionId(streamedFinal.sessionId);
-          window.history.replaceState(null, '', `?session=${streamedFinal.sessionId}`);
+          navigate(`?session=${streamedFinal.sessionId}`, { replace: true });
         }
 
         // Only sync history if streaming content was partial or we need a hard sync
@@ -260,6 +293,7 @@ const StrategistPage: React.FC = () => {
       setInput(userMsg);
     } finally {
       setIsLoading(false);
+      setIsBuildingCampaign(false);
     }
   };
 
@@ -281,6 +315,8 @@ const StrategistPage: React.FC = () => {
         await executeCampaign(res.data.campaignId);
         setStatus('LAUNCHED');
         setShowConfirmModal(false);
+        // Clear active session state from the list immediately
+        setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
       }
     } catch (err) {
       console.error(err);
@@ -353,8 +389,7 @@ const StrategistPage: React.FC = () => {
                     >
                       <button 
                         onClick={() => {
-                          window.history.replaceState(null, '', `?session=${session.id}`);
-                          loadSession(session.id);
+                          navigate(`?session=${session.id}`, { replace: true });
                         }}
                         className="w-full text-left p-4 rounded-2xl border border-border hover:border-accent bg-card-bg transition-all min-w-0 pr-12"
                       >
@@ -480,9 +515,9 @@ const StrategistPage: React.FC = () => {
       {/* Right Strategy Snapshot */}
       <div className="w-full xl:w-80 2xl:w-100 flex flex-col gap-6 h-auto xl:h-full min-w-0">
         <AnimatePresence mode="wait">
-          {latestDraft || isLoading ? (
+          {latestDraft || isBuildingCampaign ? (
             <motion.div 
-              key={isLoading ? "loading" : "draft"}
+              key={isBuildingCampaign ? "loading" : "draft"}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
@@ -494,7 +529,7 @@ const StrategistPage: React.FC = () => {
                   <Users size={18} className="text-accent shrink-0" />
                   <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Audience Discovery</h3>
                 </div>
-                {isLoading ? (
+                {isBuildingCampaign ? (
                   <div className="space-y-4">
                     <div className="flex justify-between items-end border-b border-border pb-4">
                       <Skeleton variant="text" className="w-20" />
@@ -539,7 +574,7 @@ const StrategistPage: React.FC = () => {
                   <Target size={18} className="text-accent shrink-0" />
                   <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Campaign Strategy</h3>
                 </div>
-                {isLoading ? (
+                {isBuildingCampaign ? (
                   <div className="space-y-6 flex-1 pr-1">
                     <div>
                       <Skeleton variant="text" className="w-24 mb-2" />
@@ -588,7 +623,7 @@ const StrategistPage: React.FC = () => {
                 <BarChart3 className="absolute -bottom-4 -right-4 w-16 h-16 sm:w-20 sm:h-20 opacity-10" />
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
                 
-                {isLoading ? (
+                {isBuildingCampaign ? (
                   <div className="space-y-4 mb-8">
                     <Skeleton className="bg-white/10 w-24 h-8" />
                     <Skeleton className="bg-white/10 w-full h-12" />
