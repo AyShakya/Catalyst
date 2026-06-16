@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { formatNumber, formatPercent } from '../../utils/numberFormatters';
 
 interface FunnelStepProps {
   label: string;
@@ -18,7 +19,7 @@ const FunnelStep = ({ label, value, total, color, delay, percentage }: FunnelSte
       <div className="flex justify-between items-end">
         <span className="text-[10px] font-black uppercase tracking-widest text-secondary">{label}</span>
         <div className="text-right">
-          <span className="text-sm font-black block">{value.toLocaleString()}</span>
+          <span className="text-sm font-black block">{formatNumber(value, { compact: true })}</span>
           {percentage && <span className="text-[9px] font-bold text-secondary uppercase">{percentage}</span>}
         </div>
       </div>
@@ -44,10 +45,10 @@ interface CampaignFunnelProps {
 }
 
 const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delivered, opened, clicked, purchased }) => {
-  const deliveryRate = sent > 0 ? ((delivered / sent) * 100).toFixed(1) : '0';
-  const openRate = delivered > 0 ? ((opened / delivered) * 100).toFixed(1) : '0';
-  const ctr = opened > 0 ? ((clicked / opened) * 100).toFixed(1) : '0';
-  const conversionRate = clicked > 0 ? ((purchased / clicked) * 100).toFixed(1) : '0';
+  const deliveryRate = sent > 0 ? (delivered / sent) * 100 : 0;
+  const openRate = delivered > 0 ? (opened / delivered) * 100 : 0;
+  const ctr = opened > 0 ? (clicked / opened) * 100 : 0;
+  const conversionRate = clicked > 0 ? (purchased / clicked) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -64,7 +65,7 @@ const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delive
         total={sent} 
         color="#8b5cf6" 
         delay={0.2} 
-        percentage={`${deliveryRate}% Delivery`}
+        percentage={`${formatPercent(deliveryRate)} Delivery`}
       />
       <FunnelStep 
         label="Opened" 
@@ -72,7 +73,7 @@ const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delive
         total={sent} 
         color="#ec4899" 
         delay={0.3} 
-        percentage={`${openRate}% Open Rate`}
+        percentage={`${formatPercent(openRate)} Open Rate`}
       />
       <FunnelStep 
         label="Clicked" 
@@ -80,7 +81,7 @@ const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delive
         total={sent} 
         color="#f59e0b" 
         delay={0.4} 
-        percentage={`${ctr}% CTR`}
+        percentage={`${formatPercent(ctr)} CTR`}
       />
       <FunnelStep 
         label="Converted" 
@@ -88,7 +89,7 @@ const CampaignFunnel: React.FC<CampaignFunnelProps> = React.memo(({ sent, delive
         total={sent} 
         color="#10b981" 
         delay={0.5} 
-        percentage={`${conversionRate}% Conv. Rate`}
+        percentage={`${formatPercent(conversionRate)} Conv. Rate`}
       />
     </div>
   );

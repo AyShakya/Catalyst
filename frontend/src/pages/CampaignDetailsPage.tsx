@@ -10,6 +10,7 @@ import {
   Skeleton, FunnelSkeleton, ComparisonSkeleton, 
   OpportunitySkeleton 
 } from '../components/layout/Skeleton';
+import { formatNumber, formatCurrency, formatPercent } from '../utils/numberFormatters';
 
 // import CampaignFunnel from '../components/charts/CampaignFunnel';
 // import ForecastComparison from '../components/charts/ForecastComparison';
@@ -254,11 +255,11 @@ const CampaignDetailsPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-card-bg rounded-2xl">
                 <span className="text-[10px] font-black text-secondary uppercase block mb-1">Target Size</span>
-                <span className="text-lg font-black">{campaign.audience_size?.toLocaleString()}</span>
+                <span className="text-lg font-black">{formatNumber(campaign.audience_size, { compact: true })}</span>
               </div>
               <div className="p-4 bg-card-bg rounded-2xl">
                 <span className="text-[10px] font-black text-secondary uppercase block mb-1">Forecast Conv.</span>
-                <span className="text-lg font-black text-success">{campaign.forecast_purchased || 0}</span>
+                <span className="text-lg font-black text-success">{formatNumber(campaign.forecast_purchased, { compact: true })}</span>
               </div>
             </div>
           </div>
@@ -274,19 +275,19 @@ const CampaignDetailsPage: React.FC = () => {
             <div className="space-y-6">
               <div className="flex justify-between items-end border-b border-white/10 pb-4">
                 <span className="text-xs font-medium text-white/40 uppercase">Delivery Rate</span>
-                <span className="text-2xl font-black">{metrics?.delivery_rate ? (metrics.delivery_rate * 100).toFixed(1) : '0.0'}%</span>
+                <span className="text-2xl font-black">{formatPercent(metrics?.delivery_rate * 100)}</span>
               </div>
               <div className="flex justify-between items-end border-b border-white/10 pb-4">
                 <span className="text-xs font-medium text-white/40 uppercase">Open Rate</span>
-                <span className="text-2xl font-black">{metrics?.open_rate ? (metrics.open_rate * 100).toFixed(1) : '0.0'}%</span>
+                <span className="text-2xl font-black">{formatPercent(metrics?.open_rate * 100)}</span>
               </div>
               <div className="flex justify-between items-end border-b border-white/10 pb-4">
                 <span className="text-xs font-medium text-white/40 uppercase">Conversion Rate</span>
-                <span className="text-2xl font-black">{metrics?.conversion_rate ? (metrics.conversion_rate * 100).toFixed(1) : '0.0'}%</span>
+                <span className="text-2xl font-black">{formatPercent(metrics?.conversion_rate * 100)}</span>
               </div>
               <div className="pt-4">
                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-1">Revenue Generated</span>
-                <span className="text-3xl sm:text-4xl font-black text-success break-words">${Number(metrics?.revenue_generated || 0).toLocaleString()}</span>
+                <span className="text-3xl sm:text-4xl font-black text-success break-words">{formatCurrency(metrics?.revenue_generated, { compact: true })}</span>
               </div>
             </div>
           </div>

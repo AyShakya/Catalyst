@@ -2,6 +2,7 @@ import React from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import { formatNumber } from '../../utils/numberFormatters';
 
 interface ForecastComparisonProps {
   forecast: {
@@ -45,6 +46,7 @@ const ForecastComparison: React.FC<ForecastComparisonProps> = React.memo(({ fore
           <Tooltip 
             cursor={{ fill: '#f8fafc' }}
             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '12px' }}
+            formatter={(value: number) => [formatNumber(value, { compact: true }), '']}
           />
           <Legend 
             verticalAlign="top" 

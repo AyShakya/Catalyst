@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { getCampaigns } from '../services/brandService';
 import { Skeleton, KPICardSkeleton, ChartSkeleton } from '../components/layout/Skeleton';
 import { Campaign } from '../types/campaign';
+import { formatNumber, formatCurrency, formatPercent } from '../utils/numberFormatters';
 
 const AnalyticsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ const AnalyticsPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-secondary mb-1 truncate">Delivery Rate</h3>
-                <p className="text-2xl sm:text-3xl font-black truncate">{deliveryRate.toFixed(1)}%</p>
+                <p className="text-2xl sm:text-3xl font-black truncate">{formatPercent(deliveryRate)}</p>
               </div>
             </div>
             <div className="bg-white p-5 sm:p-6 rounded-3xl border border-border shadow-sm min-w-0 flex flex-col justify-between">
@@ -101,7 +102,7 @@ const AnalyticsPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-secondary mb-1 truncate">Open Rate</h3>
-                <p className="text-2xl sm:text-3xl font-black truncate">{openRate.toFixed(1)}%</p>
+                <p className="text-2xl sm:text-3xl font-black truncate">{formatPercent(openRate)}</p>
               </div>
             </div>
             <div className="bg-white p-5 sm:p-6 rounded-3xl border border-border shadow-sm min-w-0 flex flex-col justify-between">
@@ -110,7 +111,7 @@ const AnalyticsPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-secondary mb-1 truncate">CTR</h3>
-                <p className="text-2xl sm:text-3xl font-black truncate">{ctr.toFixed(1)}%</p>
+                <p className="text-2xl sm:text-3xl font-black truncate">{formatPercent(ctr)}</p>
               </div>
             </div>
             <div className="bg-white p-5 sm:p-6 rounded-3xl border border-border shadow-sm min-w-0 flex flex-col justify-between">
@@ -119,7 +120,7 @@ const AnalyticsPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-secondary mb-1 truncate">Revenue</h3>
-                <p className="text-2xl sm:text-3xl font-black truncate">${totalRevenue.toLocaleString()}</p>
+                <p className="text-2xl sm:text-3xl font-black truncate">{formatCurrency(totalRevenue, { compact: true })}</p>
               </div>
             </div>
           </>

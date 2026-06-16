@@ -3,6 +3,7 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
 } from 'recharts';
 import { MetricDistribution } from '../../types/intelligence';
+import { formatNumber, formatPercent } from '../../utils/numberFormatters';
 
 interface RevenueDonutProps {
   data: MetricDistribution[];
@@ -14,8 +15,8 @@ const RevenueDonut: React.FC<RevenueDonutProps> = React.memo(({ data }) => {
   const totalCount = data.reduce((acc, curr) => acc + curr.count, 0);
 
   const formatTooltip = (value: any) => {
-    const percentage = ((value / totalCount) * 100).toFixed(1);
-    return [`${value} Customers (${percentage}%)`, 'Count'];
+    const percentage = (value / totalCount) * 100;
+    return [`${formatNumber(value)} Customers (${formatPercent(percentage)})`, 'Count'];
   };
 
   return (

@@ -25,9 +25,7 @@ import {
 } from '../components/layout/Skeleton';
 import { BrandAnalytics, GrowthOpportunity, HealthMatrixPoint, ValuePyramidTier } from '../types/intelligence';
 import { Campaign } from '../types/campaign';
-// import CustomerHealthMatrix from '../components/charts/CustomerHealthMatrix';
-// import RevenueDonut from '../components/charts/RevenueDonut';
-// import ValuePyramid from '../components/charts/ValuePyramid';
+import { formatNumber, formatCurrency, formatPercent, formatCompact } from '../utils/numberFormatters';
 
 // Lazy load heavy charts
 const CustomerHealthMatrix = React.lazy(() => import('../components/charts/CustomerHealthMatrix'));
@@ -203,28 +201,28 @@ const OverviewPage: React.FC = () => {
           <>
             <KPICard 
               title="Total Customers" 
-              value={summary?.total_customers?.toLocaleString() || '0'} 
+              value={formatNumber(summary?.total_customers, { compact: true })} 
               icon={Users}
               description="Unique customer base size"
-              detail={`Avg ${summary?.avg_orders_per_customer || '0'} orders / user`}
+              detail={`Avg ${formatNumber(summary?.avg_orders_per_customer, { decimals: 1 })} orders / user`}
             />
             <KPICard 
               title="Total Revenue" 
-              value={`$${summary?.total_revenue?.toLocaleString() || '0'}`} 
+              value={formatCurrency(summary?.total_revenue, { compact: true })} 
               icon={DollarSign}
               description="Aggregate lifetime value"
-              detail={`$${summary?.median_spend || '0'} median spend`}
+              detail={`${formatCurrency(summary?.median_spend)} median spend`}
             />
             <KPICard 
               title="Avg Customer Spend" 
-              value={`$${Math.round(summary?.avg_order_value || 0)}`} 
+              value={formatCurrency(summary?.avg_order_value)} 
               icon={Wallet}
               description="Average spend per transaction"
-              detail={`$${summary?.p90_spend || '0'} top 10% threshold`}
+              detail={`${formatCurrency(summary?.p90_spend)} top 10% threshold`}
             />
             <KPICard 
               title="Brand Health" 
-              value={`${Math.round(100 - (summary?.avg_churn_score || 0))}%`} 
+              value={formatPercent(100 - (summary?.avg_churn_score || 0), 0)} 
               icon={Target}
               description="Overall retention stability"
               detail={`${Math.round(summary?.avg_loyalty_score || 0)}/100 loyalty index`}
@@ -283,7 +281,7 @@ const OverviewPage: React.FC = () => {
                 </div>
                 <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Churn</span>
-                  <span className="text-sm font-black">{Math.round(summary?.avg_churn_score || 0)}%</span>
+                  <span className="text-sm font-black">{formatPercent(summary?.avg_churn_score, 0)}</span>
                 </div>
                 <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Inactive Interval</span>
@@ -291,7 +289,7 @@ const OverviewPage: React.FC = () => {
                 </div>
                 <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Max LTV</span>
-                  <span className="text-sm font-black text-accent">${Math.round(summary?.p95_spend || 0).toLocaleString()}</span>
+                  <span className="text-sm font-black text-accent">{formatCurrency(summary?.p95_spend, { compact: true })}</span>
                 </div>
               </div>
             </div>
