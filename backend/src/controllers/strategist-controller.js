@@ -20,6 +20,7 @@ class StrategistResponseFormatter {
   static formatSessionState(state) {
     return {
       status: state.status,
+      campaignId: state.campaignId || null,
       history: state.messages.map(m => ({
         role: m.role,
         content: m.content,

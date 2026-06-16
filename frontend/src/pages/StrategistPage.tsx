@@ -52,6 +52,7 @@ const StrategistPage: React.FC = () => {
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [isBuildingCampaign, setIsBuildingCampaign] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const streamingAssistantIndexRef = useRef<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -74,6 +75,7 @@ const StrategistPage: React.FC = () => {
         setMessages([]);
         setLatestDraft(null);
         setStatus('ACTIVE');
+        setCampaignId(null);
         setIsBuildingCampaign(false);
       }
       fetchActiveSessions(brandId);
@@ -117,10 +119,17 @@ const StrategistPage: React.FC = () => {
         setMessages(res.data.history);
         setLatestDraft(res.data.latestDraft);
         setStatus(res.data.status);
+        setCampaignId(res.data.campaignId || null);
       }
     } catch (err) {
       if ((err as any).name !== 'AbortError') {
         console.error("Failed to load session:", err);
+        setSessionId(null);
+        setMessages([]);
+        setLatestDraft(null);
+        setStatus('ACTIVE');
+        setCampaignId(null);
+        navigate(window.location.pathname, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -163,6 +172,7 @@ const StrategistPage: React.FC = () => {
       setMessages([]);
       setLatestDraft(null);
       setStatus('ACTIVE');
+      setCampaignId(null);
       setShowDiscardModal(false);
       
       // Navigate to remove URL parameter
@@ -319,11 +329,12 @@ const StrategistPage: React.FC = () => {
         // Trigger actual execution (PII snapshot + dispatch)
         await executeCampaign(res.data.campaignId);
         setStatus('LAUNCHED');
+        setCampaignId(res.data.campaignId);
         setShowConfirmModal(false);
         // Clear active session state from the list immediately
         setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
         // Redirect to campaigns page to monitor progress
-        navigate(`/workspace/${brandId}/campaigns`);
+        navigate(`/workspace/${brandId}/campaigns/${res.data.campaignId}`);
       }
     } catch (err) {
       console.error(err);
@@ -360,7 +371,7 @@ const StrategistPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
-            {sessionId && status !== 'LAUNCHED' && (
+            {sessionId && (
               <button 
                 onClick={handleCloseSession}
                 disabled={isLoading}
@@ -672,7 +683,13 @@ const StrategistPage: React.FC = () => {
 
                 {status === 'LAUNCHED' ? (
                   <button 
-                    onClick={() => navigate('/workspace/campaigns')}
+                    onClick={() => {
+                      if (campaignId) {
+                        navigate(`/workspace/${brandId}/campaigns/${campaignId}`);
+                      } else {
+                        navigate(`/workspace/${brandId}/campaigns`);
+                      }
+                    }}
                     className="w-full py-3.5 sm:py-4 bg-success text-white rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-lg shadow-success/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                   >
                     Campaign Running <Play size={14} />

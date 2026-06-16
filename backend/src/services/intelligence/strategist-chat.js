@@ -262,7 +262,7 @@ class StrategistChatService {
    * Fetches the latest state of a session.
    */
   async getSessionState(brandId, sessionId) {
-    const [sessionRes, messagesRes, draftRes] = await Promise.all([
+    const [sessionRes, messagesRes, draftRes, campaignRes] = await Promise.all([
       query("SELECT status FROM strategist_sessions WHERE id = $1 AND brand_id = $2", [sessionId, brandId]),
       query(
         "SELECT role, content, created_at FROM strategist_messages WHERE session_id = $1 ORDER BY created_at ASC",
@@ -271,7 +271,8 @@ class StrategistChatService {
       query(
         "SELECT * FROM campaign_drafts WHERE session_id = $1 ORDER BY version DESC LIMIT 1",
         [sessionId]
-      )
+      ),
+      query("SELECT id FROM campaigns WHERE session_id = $1 LIMIT 1", [sessionId])
     ]);
 
     if (sessionRes.rows.length === 0) {
@@ -281,7 +282,8 @@ class StrategistChatService {
     return {
       status: sessionRes.rows[0].status || 'ACTIVE',
       messages: messagesRes.rows,
-      latestDraft: draftRes.rows[0]
+      latestDraft: draftRes.rows[0],
+      campaignId: campaignRes.rows[0]?.id || null
     };
   }
 
@@ -310,7 +312,7 @@ class StrategistChatService {
    */
   async closeSession(brandId, sessionId) {
     const res = await query(
-      "DELETE FROM strategist_sessions WHERE id = $1 AND brand_id = $2 AND status = 'ACTIVE' RETURNING id",
+      "DELETE FROM strategist_sessions WHERE id = $1 AND brand_id = $2 RETURNING id",
       [sessionId, brandId]
     );
     if (res.rows.length === 0) {
