@@ -14,18 +14,16 @@ const DemoVideo: React.FC = () => {
         </div>
 
         <motion.div 
-          className="relative max-w-5xl mx-auto aspect-video rounded-2xl overflow-hidden bg-foreground shadow-2xl group cursor-pointer"
+          className="relative max-w-5xl mx-auto aspect-video rounded-2xl overflow-hidden bg-foreground shadow-2xl group cursor-pointer border border-white/5"
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          {/* Mock Video Thumbnail / Placeholder */}
-          <img 
-            src="/src/assets/hero.png" 
-            alt="Product Demo Thumbnail" 
-            className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
-          />
+          {/* Professional Background Placeholder */}
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-foreground to-foreground group-hover:scale-105 transition-transform duration-700" />
+          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20" />
           
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-white/20 transition-all duration-300">

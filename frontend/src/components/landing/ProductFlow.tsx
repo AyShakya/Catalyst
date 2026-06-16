@@ -43,28 +43,28 @@ const ProductFlow: React.FC = () => {
 
         <div className="relative">
           {/* Connection Line (Desktop) */}
-          <div className="hidden lg:block absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2 z-0" />
+          <div className="hidden lg:block absolute top-8 left-[10%] right-[10%] h-0.5 bg-border z-0" />
           
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8 relative z-10">
+          <div className="flex flex-col lg:flex-row justify-between items-center lg:items-start gap-12 lg:gap-4 relative z-10">
             {steps.map((step, index) => (
               <motion.div 
                 key={index}
-                className="flex flex-col items-center text-center group"
+                className="flex flex-col items-center text-center group w-full lg:w-1/5 relative"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <div className="w-16 h-16 rounded-full bg-white border border-border flex items-center justify-center mb-6 shadow-sm group-hover:border-accent group-hover:shadow-md transition-all duration-300 relative">
+                {/* Vertical Line (Mobile) */}
+                {index < steps.length - 1 && (
+                  <div className="lg:hidden absolute top-16 left-1/2 w-0.5 h-12 bg-border -translate-x-1/2 z-0" />
+                )}
+
+                <div className="w-16 h-16 rounded-full bg-white border border-border flex items-center justify-center mb-6 shadow-sm group-hover:border-accent group-hover:shadow-md transition-all duration-300 relative bg-white z-10">
                   {step.icon}
-                  {index < steps.length - 1 && (
-                    <div className="hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 text-border">
-                      <ArrowRight size={16} />
-                    </div>
-                  )}
                 </div>
                 <h3 className="text-lg font-bold mb-2">{step.title}</h3>
-                <p className="text-sm text-secondary leading-relaxed">
+                <p className="text-sm text-secondary leading-relaxed max-w-[200px] lg:max-w-none">
                   {step.description}
                 </p>
               </motion.div>
