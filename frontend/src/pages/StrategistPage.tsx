@@ -4,7 +4,7 @@ import {
   Sparkles, Send, Loader2, Target, Users, 
   MessageSquare, BarChart3, Rocket, Trash2, Edit3,
   CheckCircle2, ArrowRight, Bot, User, History,
-  ChevronRight, Play
+  ChevronRight, Play, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithStrategist, chatWithStrategistStream, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
@@ -42,6 +42,7 @@ const StrategistPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const streamingAssistantIndexRef = useRef<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -262,12 +263,13 @@ const StrategistPage: React.FC = () => {
     }
   };
 
-  const handleLaunch = async () => {
+  const handleLaunch = () => {
     if (!sessionId || isLaunching || status === 'LAUNCHED' || isLoading) return;
+    setShowConfirmModal(true);
+  };
 
-    if (!window.confirm("Are you sure you want to execute this campaign? This action cannot be undone and real messages will be dispatched.")) {
-      return;
-    }
+  const executeConfirmedLaunch = async () => {
+    if (!sessionId || isLaunching || status === 'LAUNCHED' || isLoading) return;
 
     const brandId = localStorage.getItem('catalyst_brand_id')!;
     setIsLaunching(true);
@@ -278,6 +280,7 @@ const StrategistPage: React.FC = () => {
         // Trigger actual execution (PII snapshot + dispatch)
         await executeCampaign(res.data.campaignId);
         setStatus('LAUNCHED');
+        setShowConfirmModal(false);
       }
     } catch (err) {
       console.error(err);
@@ -653,6 +656,118 @@ const StrategistPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowConfirmModal(false)}
+            className="fixed inset-0 bg-black/45 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-border w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col gap-6"
+            >
+              {/* Header */}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center shrink-0 shadow-inner">
+                  <Rocket size={24} className="animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">Confirm Execution</h4>
+                  <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-foreground">Launch Campaign?</h3>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="flex gap-3 items-start bg-danger/5 border border-danger/10 p-3.5 rounded-2xl">
+                <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />
+                <p className="text-xs text-secondary leading-relaxed font-medium">
+                  You are about to launch <span className="font-bold text-foreground">"{latestDraft?.name}"</span>. This action cannot be undone and real messages will be dispatched immediately.
+                </p>
+              </div>
+
+              {/* Details card */}
+              {latestDraft && (
+                <div className="bg-card-bg rounded-2xl border border-border p-4 space-y-3.5">
+                  <div className="text-[9px] font-black text-secondary uppercase tracking-widest border-b border-border pb-2">
+                    Campaign Details
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-0.5 opacity-60">Target Audience</span>
+                      <span className="text-xs font-black text-foreground flex items-center gap-1.5">
+                        <Users size={12} className="text-accent" />
+                        {latestDraft.audience.size.toLocaleString()} users
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-0.5 opacity-60">Estimated Yield</span>
+                      <span className="text-xs font-black text-success flex items-center gap-1.5">
+                        <BarChart3 size={12} className="text-success" />
+                        ${latestDraft.forecast.revenue.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-0.5 opacity-60">Channel</span>
+                      <span className="text-[10px] font-black text-accent bg-accent/5 px-2 py-0.5 rounded uppercase tracking-wider inline-block">
+                        {latestDraft.channel}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-black text-secondary uppercase block mb-0.5 opacity-60">Avg Order Value</span>
+                      <span className="text-xs font-bold text-foreground">
+                        ${Math.round(latestDraft.audience.avgOrderValue || latestDraft.audience.avgSpend / 10)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-border pt-3">
+                    <span className="text-[8px] font-black text-secondary uppercase block mb-1 opacity-60">Message Template</span>
+                    <p className="text-[11px] text-secondary font-medium italic leading-relaxed line-clamp-2">
+                      "{latestDraft.message}"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="px-5 py-3 border border-border rounded-xl font-black text-[10px] uppercase tracking-widest text-secondary hover:bg-card-bg transition-all hover:text-foreground active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeConfirmedLaunch}
+                  disabled={isLaunching}
+                  className="px-5 py-3 bg-accent text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-accent/20 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isLaunching ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Launching...
+                    </>
+                  ) : (
+                    <>
+                      Execute Launch
+                      <Rocket size={12} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
