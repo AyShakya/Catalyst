@@ -26,9 +26,9 @@ const WorkspaceLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-card-bg overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen bg-transparent overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border flex flex-col p-4 lg:p-6 shrink-0 z-20">
+      <aside className="w-full lg:w-64 xl:w-72 bg-white/40 backdrop-blur-md border-b lg:border-b-0 lg:border-r border-border flex flex-col p-4 lg:p-6 shrink-0 z-20">
         <div className="mb-4 lg:mb-10 px-2 flex justify-between items-center lg:block">
           <div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tighter">CATALYST</h2>
@@ -63,7 +63,7 @@ const WorkspaceLayout: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-y-auto bg-card-bg relative">
+      <main className="flex-1 min-w-0 overflow-y-auto bg-transparent relative">
         <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-7xl mx-auto w-full">
           <React.Suspense fallback={
             <div className="flex items-center justify-center h-[50vh]">

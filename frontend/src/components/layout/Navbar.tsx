@@ -73,7 +73,7 @@ const Navbar: React.FC = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-full left-0 right-0 bg-white border-b border-border p-6 flex flex-col gap-6 md:hidden shadow-xl"
+            className="absolute top-full left-0 right-0 bg-white/90 backdrop-blur-lg border-b border-border p-6 flex flex-col gap-6 md:hidden shadow-xl"
           >
             <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Platform</Link>
             <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Solutions</Link>

@@ -7,7 +7,7 @@ const Hero: React.FC = () => {
   const hasWorkspace = !!localStorage.getItem('catalyst_brand_id');
 
   return (
-    <section className="relative overflow-hidden bg-background py-32 text-center lg:py-48">
+    <section className="relative overflow-hidden bg-transparent py-32 text-center lg:py-48">
       <div className="container mx-auto px-6">
         <motion.span 
           className="mb-6 block text-sm font-semibold tracking-widest text-accent uppercase"

@@ -7,7 +7,7 @@ import Footer from '../components/landing/Footer';
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="landing-page bg-background">
+    <div className="landing-page bg-transparent">
       <Hero />
       <ProductFlow />
       <DemoVideo />

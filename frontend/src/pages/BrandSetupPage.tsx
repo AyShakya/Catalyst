@@ -709,7 +709,7 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
 
   if (state === 'processing') {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4 sm:p-6">
         <div className="max-w-md w-full">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -750,7 +750,7 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
   }
 
   return (
-    <div className="min-h-screen bg-card-bg py-10 sm:py-20 px-4 sm:px-6">
+    <div className="min-h-screen bg-transparent py-10 sm:py-20 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <button 
           onClick={() => navigate('/')}

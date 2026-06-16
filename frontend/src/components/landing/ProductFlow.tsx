@@ -32,7 +32,7 @@ const steps = [
 
 const ProductFlow: React.FC = () => {
   return (
-    <section className="py-24 bg-card-bg/50">
+    <section className="py-24 bg-transparent">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-black mb-4">THE CATALYST ENGINE</h2>
@@ -43,7 +43,7 @@ const ProductFlow: React.FC = () => {
 
         <div className="relative">
           {/* Connection Line (Desktop) */}
-          <div className="hidden lg:block absolute top-8 left-[10%] right-[10%] h-0.5 bg-border z-0" />
+          <div className="hidden lg:block absolute top-8 left-[10%] right-[10%] h-0.5 bg-accent/20 z-0" />
           
           <div className="flex flex-col lg:flex-row justify-between items-center lg:items-start gap-12 lg:gap-4 relative z-10">
             {steps.map((step, index) => (
@@ -55,12 +55,12 @@ const ProductFlow: React.FC = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                {/* Vertical Line (Mobile) */}
+                {/* Vertical Line Segment (Mobile) */}
                 {index < steps.length - 1 && (
-                  <div className="lg:hidden absolute top-16 left-1/2 w-0.5 h-12 bg-border -translate-x-1/2 z-0" />
+                  <div className="lg:hidden absolute top-8 left-1/2 w-0.5 h-[calc(100%+48px)] bg-accent/20 -translate-x-1/2 z-0" />
                 )}
 
-                <div className="w-16 h-16 rounded-full bg-white border border-border flex items-center justify-center mb-6 shadow-sm group-hover:border-accent group-hover:shadow-md transition-all duration-300 relative bg-white z-10">
+                <div className="w-16 h-16 rounded-full bg-white border border-border flex items-center justify-center mb-6 shadow-sm group-hover:border-accent group-hover:shadow-md transition-all duration-300 relative z-10">
                   {step.icon}
                 </div>
                 <h3 className="text-lg font-bold mb-2">{step.title}</h3>

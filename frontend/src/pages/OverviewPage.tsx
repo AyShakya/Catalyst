@@ -105,7 +105,7 @@ const OverviewPage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tighter truncate sm:whitespace-normal">Business Health</h1>
           <p className="text-secondary font-medium text-sm sm:text-base">Catalyst Intelligence Interface</p>
         </div>
-        <div className="bg-white border border-border px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-2 w-fit shrink-0 shadow-sm">
+        <div className="bg-transparent border border-border px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-2 w-fit shrink-0 shadow-sm">
           <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success animate-pulse shrink-0" />
           <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Active Intel Layer</span>
         </div>
@@ -275,19 +275,19 @@ const OverviewPage: React.FC = () => {
                 </React.Suspense>
               </div>
               <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                <div className="p-3 bg-transparent rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Loyalty</span>
                   <span className="text-sm font-black">{Math.round(summary?.avg_loyalty_score || 0)}/100</span>
                 </div>
-                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                <div className="p-3 bg-transparent rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Avg Churn</span>
                   <span className="text-sm font-black">{formatPercent(summary?.avg_churn_score, 0)}</span>
                 </div>
-                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                <div className="p-3 bg-transparent rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Inactive Interval</span>
                   <span className="text-sm font-black">{Math.round(summary?.avg_days_since_purchase || 0)} days</span>
                 </div>
-                <div className="p-3 bg-card-bg/50 rounded-2xl border border-border/50">
+                <div className="p-3 bg-transparent rounded-2xl border border-border/50">
                   <span className="text-[8px] font-black text-secondary uppercase block mb-1">Max LTV</span>
                   <span className="text-sm font-black text-accent">{formatCurrency(summary?.p95_spend, { compact: true })}</span>
                 </div>

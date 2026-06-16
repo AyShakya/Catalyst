@@ -111,7 +111,7 @@ const CampaignDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-20 bg-transparent">
       <button 
         onClick={() => navigate('/workspace/campaigns')}
         className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors font-black text-[10px] uppercase tracking-widest"
