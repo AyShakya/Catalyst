@@ -167,25 +167,29 @@ const CampaignDetailsPage: React.FC = () => {
 
           {/* AI Strategy Milestones */}
           {milestones.length > 0 && (
-            <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
-              <div className="flex items-center gap-3 mb-8">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
+              <div className="flex items-center gap-3 mb-10">
                 <div className="p-2 bg-secondary/10 text-secondary rounded-lg">
                   <Map size={20} />
                 </div>
                 <h3 className="text-sm font-black uppercase tracking-widest">Strategy Evolution</h3>
               </div>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+              <div className="space-y-10 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent pb-4">
                 {milestones.map((milestone, i) => (
                   <div key={i} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full border-4 border-white bg-accent text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
-                      <span className="text-[10px] font-black">v{milestone.version}</span>
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full border-4 border-white bg-accent text-white shadow-md shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-transform group-hover:scale-110">
+                      <span className="text-[9px] font-black">v{milestone.version}</span>
                     </div>
-                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2rem)] bg-card-bg p-4 rounded-2xl border border-border shadow-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-accent uppercase tracking-widest">Iteration {i + 1}</span>
-                        <span className="text-[10px] font-medium text-secondary">{new Date(milestone.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] bg-card-bg p-4 sm:p-5 rounded-2xl border border-border shadow-sm group-hover:border-accent/30 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] font-black text-accent uppercase tracking-widest">
+                          {i === 0 ? 'Genesis' : `Iteration ${milestone.version}`}
+                        </span>
+                        <span className="text-[9px] font-bold text-secondary bg-white px-2 py-0.5 rounded-full border border-border/50">
+                          {new Date(milestone.created_at).toLocaleDateString()}
+                        </span>
                       </div>
-                      <p className="text-xs font-bold text-foreground">{milestone.change_summary}</p>
+                      <p className="text-xs font-bold text-foreground leading-relaxed">{milestone.change_summary}</p>
                     </div>
                   </div>
                 ))}

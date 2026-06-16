@@ -316,27 +316,62 @@ async function listCampaigns(req, res) {
 async function getCampaignMilestones(req, res) {
   try {
     const { id } = req.params;
-    // We can require strategistChatService here, or move logic to campaign service.
-    // For simplicity, we can fetch from DB directly here or require the strategist service.
     const { query } = require("../config/db");
     
-    const campaignRes = await query("SELECT session_id FROM campaigns WHERE id = $1", [id]);
-    if (campaignRes.rows.length === 0 || !campaignRes.rows[0].session_id) {
-      return res.json({ status: "success", data: [] });
+    const campaignRes = await query("SELECT session_id, created_at, campaign_name FROM campaigns WHERE id = $1", [id]);
+    if (campaignRes.rows.length === 0) {
+      return res.status(404).json({ error: "Campaign not found" });
     }
 
-    const sessionId = campaignRes.rows[0].session_id;
+    const { session_id: sessionId, created_at: createdAt, campaign_name: campaignName } = campaignRes.rows[0];
+
+    // If no session (Legacy V1), return the campaign creation as the sole milestone
+    if (!sessionId) {
+      return res.json({
+        status: "success",
+        data: [{
+          version: 1,
+          change_summary: `Initial Strategy: ${campaignName}`,
+          created_at: createdAt
+        }]
+      });
+    }
+
+    // Fetch milestones from drafts
     const draftsRes = await query(
-      `SELECT version, draft_json, change_summary, created_at 
+      `SELECT version, change_summary, created_at 
        FROM campaign_drafts 
        WHERE session_id = $1 AND is_milestone = TRUE 
        ORDER BY version ASC`,
       [sessionId]
     );
 
+    let milestones = draftsRes.rows;
+
+    // If v1 is missing from milestones, fetch it and prepend it
+    const hasV1 = milestones.some(m => m.version === 1);
+    if (!hasV1) {
+      const v1Res = await query(
+        "SELECT version, change_summary, created_at FROM campaign_drafts WHERE session_id = $1 AND version = 1",
+        [sessionId]
+      );
+      if (v1Res.rows.length > 0) {
+        const v1 = v1Res.rows[0];
+        v1.change_summary = v1.change_summary || `Initial Strategy: ${campaignName}`;
+        milestones = [v1, ...milestones];
+      } else if (milestones.length === 0) {
+        // Absolute fallback: use campaign data
+        milestones = [{
+          version: 1,
+          change_summary: `Initial Strategy: ${campaignName}`,
+          created_at: createdAt
+        }];
+      }
+    }
+
     res.json({
       status: "success",
-      data: draftsRes.rows
+      data: milestones
     });
   } catch (error) {
     console.error("Error in getCampaignMilestones:", error);
