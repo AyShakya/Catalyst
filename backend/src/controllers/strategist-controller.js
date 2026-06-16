@@ -10,6 +10,7 @@ class StrategistResponseFormatter {
     return {
       sessionId: result.sessionId,
       version: result.version,
+      action: result.action,
       message: result.assistantMessage,
       draft: this.formatDraft(result.draft),
       history: result.history
@@ -136,6 +137,7 @@ async function chatWithStrategistStream(req, res) {
     sendEvent("final", {
       sessionId: result.sessionId,
       version: result.version,
+      action: result.action,
       message: result.assistantMessage,
       draft: StrategistResponseFormatter.formatDraft(result.draft, result.version),
       history: result.history,

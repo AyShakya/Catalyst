@@ -44,6 +44,8 @@ const StrategistPage: React.FC = () => {
   const [isLaunching, setIsLaunching] = useState(false);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
   const [isBuildingCampaign, setIsBuildingCampaign] = useState(false);
   const streamingAssistantIndexRef = useRef<number | null>(null);
   
@@ -139,25 +141,38 @@ const StrategistPage: React.FC = () => {
     }
   };
 
-  const handleCloseSession = async () => {
+  const handleCloseSession = () => {
     if (!sessionId || isLoading) return;
+    setShowDiscardModal(true);
+  };
+
+  const executeConfirmedDiscard = async () => {
+    if (!sessionId || isLoading || isDiscarding) return;
     
-    // Optimistic UI for immediate feedback
-    const targetSessionId = sessionId;
     const brandId = localStorage.getItem('catalyst_brand_id');
     if (!brandId) return;
 
-    setSessionId(null);
-    setMessages([]);
-    setLatestDraft(null);
-    setStatus('ACTIVE');
-    navigate(window.location.pathname, { replace: true });
+    setIsDiscarding(true);
+    const targetSessionId = sessionId;
 
     try {
       await closeSession(brandId, targetSessionId);
-      fetchActiveSessions(brandId);
+      // Remove from list immediately
+      setActiveSessions(prev => prev.filter(s => s.id !== targetSessionId));
+      
+      // Clean up states
+      setSessionId(null);
+      setMessages([]);
+      setLatestDraft(null);
+      setStatus('ACTIVE');
+      setShowDiscardModal(false);
+      
+      // Navigate to remove URL parameter
+      navigate(window.location.pathname, { replace: true });
     } catch (err) {
-      console.error("Failed to close session:", err);
+      console.error("Failed to discard session:", err);
+    } finally {
+      setIsDiscarding(false);
     }
   };
 
@@ -169,15 +184,6 @@ const StrategistPage: React.FC = () => {
     setIsLoading(true);
     
     const userMsg = input.trim();
-    const conversationalPatterns = [
-      /^\s*(hi|hello|hey|greetings|good morning|good afternoon|good evening|yo)\b/i,
-      /^\s*(how are you|how's it going|what's up|whats up|howdy)\b/i,
-      /^\s*(who are you|what is your name|what can you do|help)\b/i,
-      /^\s*(thanks|thank you|cool|ok|okay|great|awesome|perfect|yes|no)\b/i
-    ];
-    const isCampaignReq = latestDraft !== null || !conversationalPatterns.some(pattern => pattern.test(userMsg));
-    setIsBuildingCampaign(isCampaignReq);
-    
     const controller = new AbortController();
 
     const brandId = localStorage.getItem('catalyst_brand_id')!;
@@ -514,10 +520,10 @@ const StrategistPage: React.FC = () => {
 
       {/* Right Strategy Snapshot */}
       <div className="w-full xl:w-80 2xl:w-100 flex flex-col gap-6 h-auto xl:h-full min-w-0">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {latestDraft || isBuildingCampaign ? (
             <motion.div 
-              key={isBuildingCampaign ? "loading" : "draft"}
+              key="strategy-snapshot"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
@@ -795,6 +801,74 @@ const StrategistPage: React.FC = () => {
                     <>
                       Execute Launch
                       <Rocket size={12} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Discard Confirmation Modal */}
+      <AnimatePresence>
+        {showDiscardModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDiscardModal(false)}
+            className="fixed inset-0 bg-black/45 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-border w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col gap-6"
+            >
+              {/* Header */}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-error/10 text-error flex items-center justify-center shrink-0 shadow-inner">
+                  <Trash2 size={24} />
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-error mb-1">Confirm Action</h4>
+                  <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-foreground">Discard Session?</h3>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="flex gap-3 items-start bg-error/5 border border-error/10 p-3.5 rounded-2xl">
+                <AlertCircle size={18} className="text-error shrink-0 mt-0.5" />
+                <p className="text-xs text-secondary leading-relaxed font-medium">
+                  Are you sure you want to discard this strategy chat? This will permanently delete the session, chat history, and all draft details. This action cannot be undone.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowDiscardModal(false)}
+                  className="px-5 py-3 border border-border rounded-xl font-black text-[10px] uppercase tracking-widest text-secondary hover:bg-card-bg transition-all hover:text-foreground active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeConfirmedDiscard}
+                  disabled={isDiscarding}
+                  className="px-5 py-3 bg-error text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-error/20 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isDiscarding ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Discarding...
+                    </>
+                  ) : (
+                    <>
+                      Discard Session
+                      <Trash2 size={12} />
                     </>
                   )}
                 </button>
