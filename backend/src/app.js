@@ -47,9 +47,10 @@ app.get("/health", (req, res) => {
 app.use("/api/webhook", webhookRoutes);
 
 // Rate Limiting applied to other API routes
+const isDevOrTest = !process.env.NODE_ENV || process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window`
+  max: isDevOrTest ? 10000 : 100, // Limit each IP to 10000 in dev/test, 100 in prod
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests from this IP, please try again after 15 minutes" }

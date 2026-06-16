@@ -53,7 +53,9 @@ const StrategistPage: React.FC = () => {
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [isBuildingCampaign, setIsBuildingCampaign] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const streamingAssistantIndexRef = useRef<number | null>(null);
+  const navigatedSessionIdRef = useRef<string | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -66,19 +68,32 @@ const StrategistPage: React.FC = () => {
     const urlParams = new URLSearchParams(location.search);
     const sid = urlParams.get('session');
     if (sid) {
-      if (sid !== sessionId) {
-        loadSession(sid, controller.signal);
+      if (sid === sessionId) {
+        navigatedSessionIdRef.current = null;
+      } else {
+        if (sid === navigatedSessionIdRef.current) {
+          navigatedSessionIdRef.current = null;
+        } else {
+          loadSession(sid, controller.signal);
+        }
       }
     } else {
       if (sessionId !== null) {
-        setSessionId(null);
-        setMessages([]);
-        setLatestDraft(null);
-        setStatus('ACTIVE');
-        setCampaignId(null);
-        setIsBuildingCampaign(false);
+        if (sessionId === navigatedSessionIdRef.current) {
+          // Waiting for URL to catch up
+          console.log("Waiting for URL to catch up to session:", sessionId);
+        } else {
+          setSessionId(null);
+          setMessages([]);
+          setLatestDraft(null);
+          setStatus('ACTIVE');
+          setCampaignId(null);
+          setIsBuildingCampaign(false);
+          fetchActiveSessions(brandId);
+        }
+      } else {
+        fetchActiveSessions(brandId);
       }
-      fetchActiveSessions(brandId);
     }
 
     // Handle prompt from Opportunity Feed
@@ -252,6 +267,7 @@ const StrategistPage: React.FC = () => {
         const fallbackRes = await chatWithStrategist(brandId, userMsg, sessionId || undefined, controller.signal);
         if (fallbackRes.status === 'success') {
           if (!sessionId && fallbackRes.data.sessionId) {
+            navigatedSessionIdRef.current = fallbackRes.data.sessionId;
             setSessionId(fallbackRes.data.sessionId);
             navigate(`?session=${fallbackRes.data.sessionId}`, { replace: true });
           }
@@ -266,6 +282,7 @@ const StrategistPage: React.FC = () => {
       // 6. Finalize state from streaming response
       if (streamedFinal) {
         if (!sessionId && streamedFinal.sessionId) {
+          navigatedSessionIdRef.current = streamedFinal.sessionId;
           setSessionId(streamedFinal.sessionId);
           navigate(`?session=${streamedFinal.sessionId}`, { replace: true });
         }
@@ -314,6 +331,7 @@ const StrategistPage: React.FC = () => {
 
   const handleLaunch = () => {
     if (!sessionId || isLaunching || status === 'LAUNCHED' || isLoading) return;
+    setLaunchError(null);
     setShowConfirmModal(true);
   };
 
@@ -322,6 +340,7 @@ const StrategistPage: React.FC = () => {
 
     if (!brandId) return;
     setIsLaunching(true);
+    setLaunchError(null);
 
     try {
       const res = await launchStrategistCampaign(brandId, sessionId);
@@ -336,8 +355,10 @@ const StrategistPage: React.FC = () => {
         // Redirect to campaigns page to monitor progress
         navigate(`/workspace/${brandId}/campaigns/${res.data.campaignId}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      const msg = err.response?.data?.error || err.response?.data?.details || err.message || "Failed to launch campaign.";
+      setLaunchError(msg);
     } finally {
       setIsLaunching(false);
     }
@@ -801,6 +822,13 @@ const StrategistPage: React.FC = () => {
                       "{latestDraft.message}"
                     </p>
                   </div>
+                </div>
+              )}
+
+              {launchError && (
+                <div className="flex gap-2.5 items-start bg-error/5 border border-error/10 p-3.5 rounded-2xl text-error text-[11px] font-bold uppercase tracking-wider">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{launchError}</span>
                 </div>
               )}
 
