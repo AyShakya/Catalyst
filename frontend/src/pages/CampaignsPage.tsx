@@ -20,18 +20,27 @@ const CampaignsPage: React.FC = () => {
       return;
     }
 
-    const fetchCampaigns = async () => {
+    const fetchCampaigns = async (showLoading = true) => {
+      if (showLoading) setLoading(true);
       try {
         const res = await getCampaigns(brandId);
         setCampaigns(res.data || []);
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
 
-    fetchCampaigns();
+    fetchCampaigns(true);
+
+    const intervalId = setInterval(() => {
+      fetchCampaigns(false);
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [navigate]);
 
   return (

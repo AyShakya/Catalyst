@@ -54,7 +54,8 @@ const CampaignDetailsPage: React.FC = () => {
   useEffect(() => {
     if (!id) return;
 
-    const fetchDetails = async () => {
+    const fetchDetails = async (showLoading = true) => {
+      if (showLoading) setLoading(true);
       try {
         const [campRes, metRes, milRes] = await Promise.all([
           getCampaignDetails(id),
@@ -67,7 +68,7 @@ const CampaignDetailsPage: React.FC = () => {
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
 
@@ -84,11 +85,14 @@ const CampaignDetailsPage: React.FC = () => {
       }
     };
 
-    fetchDetails();
+    fetchDetails(true);
     fetchActivityData();
 
-    // Set up polling interval to fetch updates every 3 seconds while campaign details page is open
-    const intervalId = setInterval(fetchActivityData, 3000);
+    // Set up polling interval to fetch all campaign details and logs every 3 seconds while page is open
+    const intervalId = setInterval(() => {
+      fetchDetails(false);
+      fetchActivityData();
+    }, 3000);
 
     return () => {
       clearInterval(intervalId);
@@ -379,17 +383,23 @@ const CampaignDetailsPage: React.FC = () => {
                 <p className="text-[10px] text-secondary mt-1 font-medium">Trigger execution or check back shortly.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                <AnimatePresence initial={false}>
+              <div className="space-y-3 relative overflow-hidden">
+                <AnimatePresence mode="popLayout" initial={false}>
                   {activity.map((item) => {
                     const styles = getStatusStyles(item.status);
                     return (
                       <motion.div
                         key={item.id}
-                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                        layout
+                        initial={{ opacity: 0, y: -20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        transition={{ 
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 35,
+                          mass: 0.8
+                        }}
                         className="flex justify-between items-center p-3.5 bg-card-bg hover:bg-card-bg/85 transition-colors border border-border rounded-2xl gap-3 min-w-0"
                       >
                         <div className="min-w-0 flex-1">
