@@ -32,6 +32,81 @@ const CustomerHealthMatrix = React.lazy(() => import('../components/charts/Custo
 const RevenueDonut = React.lazy(() => import('../components/charts/RevenueDonut'));
 const ValuePyramid = React.lazy(() => import('../components/charts/ValuePyramid'));
 
+const formatBriefText = (text: string) => {
+  if (!text) return null;
+
+  const lines = text.split(/\n+/).filter(line => line.trim() !== '');
+
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+    
+    // Check if the line starts with a numbered/bullet item: e.g. "1)", "1.", "- ", "* ", "• "
+    const match = trimmed.match(/^(\d+[\.\)]|[\-\*•])\s*(.*)/);
+    
+    if (match) {
+      const marker = match[1];
+      const content = match[2];
+      const isNumber = /^\d+/.test(marker);
+      return (
+        <div key={i} className="flex gap-2.5 items-start pl-2 sm:pl-4 mt-2">
+          <span className={`${
+            isNumber 
+              ? 'font-black text-white/80 text-[10px] sm:text-xs bg-white/20 px-1.5 py-0.5 rounded-md min-w-[20px] text-center shrink-0' 
+              : 'w-1.5 h-1.5 rounded-full bg-white/60 mt-2.5 shrink-0'
+          }`}>
+            {isNumber ? marker.replace(/[\.\)]/, '') : null}
+          </span>
+          <span className="text-sm sm:text-base font-semibold leading-relaxed text-white/95">
+            {content}
+          </span>
+        </div>
+      );
+    }
+    
+    // Otherwise, check if the single line contains inline numbering like:
+    // "Some intro. 1) Point one. 2) Point two."
+    const parts = trimmed.split(/\b(\d+[\.\)])\s+/);
+    if (parts.length > 1) {
+      const formattedElements: React.ReactNode[] = [];
+      let currentText = parts[0].trim();
+      if (currentText) {
+        formattedElements.push(
+          <p key="intro" className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed mb-3">
+            {currentText}
+          </p>
+        );
+      }
+      for (let j = 1; j < parts.length; j += 2) {
+        const marker = parts[j];
+        const content = parts[j + 1]?.trim() || '';
+        const isNumber = /^\d+/.test(marker);
+        formattedElements.push(
+          <div key={j} className="flex gap-2.5 items-start pl-2 sm:pl-4 mt-3">
+            <span className={`${
+              isNumber 
+                ? 'font-black text-white/80 text-[10px] sm:text-xs bg-white/20 px-1.5 py-0.5 rounded-md min-w-[20px] text-center shrink-0' 
+                : 'w-1.5 h-1.5 rounded-full bg-white/60 mt-2.5 shrink-0'
+            }`}>
+              {isNumber ? marker.replace(/[\.\)]/, '') : null}
+            </span>
+            <span className="text-sm sm:text-base font-semibold leading-relaxed text-white/90">
+              {content}
+            </span>
+          </div>
+        );
+      }
+      return <div key={i} className="space-y-1">{formattedElements}</div>;
+    }
+
+    // Standard paragraph
+    return (
+      <p key={i} className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed max-w-4xl break-words mb-3 last:mb-0">
+        {trimmed}
+      </p>
+    );
+  });
+};
+
 const KPICard = ({ title, value, icon: Icon, description, detail }: { title: string; value: string; icon: LucideIcon; description: string; detail?: string }) => (
   <div className="bg-white p-6 rounded-3xl border border-border shadow-sm group hover:border-accent transition-all relative overflow-hidden">
     <div className="flex justify-between items-start mb-4 relative z-10">
@@ -131,9 +206,13 @@ const OverviewPage: React.FC = () => {
               <Skeleton className="bg-white/20 h-6 w-1/2" />
             </div>
           ) : (
-            <p className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed max-w-4xl break-words">
-              {executiveBrief || "Analyzing your business performance to generate insights..."}
-            </p>
+            <div className="space-y-3 max-w-4xl">
+              {formatBriefText(executiveBrief) || (
+                <p className="text-sm sm:text-base lg:text-lg font-semibold leading-relaxed break-words">
+                  Analyzing your business performance to generate insights...
+                </p>
+              )}
+            </div>
           )}
         </div>
       </motion.div>

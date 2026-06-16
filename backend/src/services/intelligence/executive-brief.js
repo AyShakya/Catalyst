@@ -135,9 +135,10 @@ class ExecutiveBriefService {
       "",
       "CONSTRAINTS:",
       "- Maximum 150 words.",
-      "- Maintain a professional, executive tone.",
+      "- Maintain a professional, executive tone and proper business grammar.",
       "- Use the provided data accurately.",
-      "- Return a JSON object with a single key: 'executive_summary'."
+      "- Return a JSON object with a single key: 'executive_summary'.",
+      "- Structure the response with clear line breaks. Start with an executive paragraph summary, and then list recommended actions clearly using numbered points (e.g., '1) Action item...\\n2) Action item...') each on a new line."
     ].join("\n");
   }
 }
