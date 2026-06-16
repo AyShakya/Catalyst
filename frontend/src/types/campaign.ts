@@ -13,6 +13,7 @@ export interface Campaign {
   status: CampaignStatus;
   audience_size: number;
   delivered?: number;
+  sent?: number;
   opened?: number;
   clicked?: number;
   revenue?: number;

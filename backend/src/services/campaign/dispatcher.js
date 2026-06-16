@@ -31,6 +31,15 @@ async function dispatchCampaign(campaignId) {
 
     // 3. Update campaign status if all dispatched (simplified for V1)
     await query("UPDATE campaigns SET status = 'RUNNING' WHERE id = $1", [campaignId]);
+
+    // Recalculate metrics immediately after dispatching so 'sent' values are populated
+    try {
+      const { refreshCampaignMetrics } = require("../analytics/campaign-analytics");
+      await refreshCampaignMetrics(campaignId);
+    } catch (metricErr) {
+      console.error(`Error refreshing metrics after dispatch for ${campaignId}:`, metricErr);
+    }
+
     console.log(`Dispatch completed for campaign ${campaignId}`);
 
   } catch (error) {
