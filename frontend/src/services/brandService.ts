@@ -233,3 +233,8 @@ export const getValuePyramid = async (brandId: string): Promise<ApiResponse<any[
   const response = await axios.get(`${API_URL}/metrics/brands/${brandId}/value-pyramid`);
   return response.data;
 };
+
+export const getCampaignActivity = async (campaignId: string): Promise<ApiResponse<any[]>> => {
+  const response = await axios.get(`${API_URL}/campaigns/${campaignId}/activity`);
+  return response.data;
+};

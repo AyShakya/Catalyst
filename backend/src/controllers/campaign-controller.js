@@ -379,4 +379,27 @@ async function getCampaignMilestones(req, res) {
   }
 }
 
-module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics, listCampaigns, getCampaignMilestones };
+async function getCampaignActivity(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await query(`
+      SELECT ce.id, ce.event_type as status, ce.timestamp as updated_at, cust.name as customer_name, cust.email as customer_email, cust.phone as customer_phone
+      FROM communication_events ce
+      JOIN communications c ON ce.communication_id = c.id
+      JOIN customers cust ON c.customer_id = cust.id
+      WHERE c.campaign_id = $1
+      ORDER BY ce.timestamp DESC
+      LIMIT 5
+    `, [id]);
+
+    res.json({
+      status: "success",
+      data: result.rows
+    });
+  } catch (error) {
+    console.error("Error in getCampaignActivity:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+module.exports = { proposeCampaign, updateCampaign, deleteCampaign, executeCampaign, getCampaign, getCampaignMetrics, listCampaigns, getCampaignMilestones, getCampaignActivity };

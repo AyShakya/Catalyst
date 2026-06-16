@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Target, Users, MessageSquare, 
-  BarChart3, Send, CheckCircle2, Clock, Map, Play, Zap
+  BarChart3, Send, CheckCircle2, Clock, Map, Play, Zap,
+  Activity, Bell, Mail, Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCampaignDetails, getCampaignMetrics, getCampaignMilestones } from '../services/brandService';
+import { getCampaignDetails, getCampaignMetrics, getCampaignMilestones, getCampaignActivity } from '../services/brandService';
 import { 
   Skeleton, FunnelSkeleton, ComparisonSkeleton, 
   OpportunitySkeleton 
@@ -18,6 +19,28 @@ import { formatNumber, formatCurrency, formatPercent } from '../utils/numberForm
 const CampaignFunnel = React.lazy(() => import('../components/charts/CampaignFunnel'));
 const ForecastComparison = React.lazy(() => import('../components/charts/ForecastComparison'));
 
+const getStatusStyles = (status: string) => {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+    case 'QUEUED':
+      return { bg: 'bg-secondary/10 border-secondary/20 text-secondary', dotColor: 'bg-secondary' };
+    case 'SENT':
+      return { bg: 'bg-accent/10 border-accent/20 text-accent', dotColor: 'bg-accent animate-pulse' };
+    case 'DELIVERED':
+      return { bg: 'bg-blue-500/10 border-blue-500/20 text-blue-500', dotColor: 'bg-blue-500' };
+    case 'OPENED':
+      return { bg: 'bg-purple-500/10 border-purple-500/20 text-purple-500', dotColor: 'bg-purple-500' };
+    case 'CLICKED':
+      return { bg: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-500', dotColor: 'bg-cyan-500' };
+    case 'PURCHASED':
+      return { bg: 'bg-success/10 border-success/20 text-success', dotColor: 'bg-success animate-bounce' };
+    case 'FAILED':
+      return { bg: 'bg-danger/10 border-danger/20 text-danger', dotColor: 'bg-danger' };
+    default:
+      return { bg: 'bg-secondary/10 border-secondary/20 text-secondary', dotColor: 'bg-secondary' };
+  }
+};
+
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -25,6 +48,8 @@ const CampaignDetailsPage: React.FC = () => {
   const [metrics, setMetrics] = useState<any>(null);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activity, setActivity] = useState<any[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -46,7 +71,28 @@ const CampaignDetailsPage: React.FC = () => {
       }
     };
 
+    const fetchActivityData = async () => {
+      try {
+        const res = await getCampaignActivity(id);
+        if (res.status === 'success') {
+          setActivity(res.data || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
     fetchDetails();
+    fetchActivityData();
+
+    // Set up polling interval to fetch updates every 3 seconds while campaign details page is open
+    const intervalId = setInterval(fetchActivityData, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [id]);
 
   if (loading) {
@@ -294,6 +340,89 @@ const CampaignDetailsPage: React.FC = () => {
                 <span className="text-3xl sm:text-4xl font-black text-success break-words">{formatCurrency(metrics?.revenue_generated, { compact: true })}</span>
               </div>
             </div>
+          </div>
+
+          {/* Live Dispatch Activity Card */}
+          <div className="bg-white p-5 sm:p-8 rounded-3xl border border-border shadow-sm flex flex-col min-w-0">
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-accent/10 text-accent rounded-lg">
+                  <Activity size={20} className="animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">Live Dispatch Log</h3>
+                  <p className="text-[9px] text-secondary font-bold uppercase mt-0.5">Real-time Delivery Pipeline</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-success/15 rounded-full border border-success/20">
+                <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
+                <span className="text-[8px] font-black text-success uppercase tracking-widest">Live</span>
+              </div>
+            </div>
+
+            {activityLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-center p-3.5 bg-card-bg rounded-2xl border border-border/50">
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                    <Skeleton className="h-6 w-20 rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            ) : activity.length === 0 ? (
+              <div className="p-6 text-center bg-card-bg border border-border border-dashed rounded-2xl">
+                <Bell size={24} className="text-secondary/40 mx-auto mb-2 shrink-0 animate-bounce" />
+                <p className="text-xs font-bold text-secondary uppercase tracking-wider">No dispatches logged yet</p>
+                <p className="text-[10px] text-secondary mt-1 font-medium">Trigger execution or check back shortly.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <AnimatePresence initial={false}>
+                  {activity.map((item) => {
+                    const styles = getStatusStyles(item.status);
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex justify-between items-center p-3.5 bg-card-bg hover:bg-card-bg/85 transition-colors border border-border rounded-2xl gap-3 min-w-0"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1.5 min-w-0">
+                            {campaign.channel?.toUpperCase() === 'EMAIL' ? (
+                              <Mail size={12} className="text-secondary shrink-0" />
+                            ) : (
+                              <Smartphone size={12} className="text-secondary shrink-0" />
+                            )}
+                            <span className="text-xs font-black truncate block text-foreground">
+                              {item.customer_name || 'Anonymous'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-medium text-secondary truncate block">
+                            {item.customer_email || item.customer_phone || 'No contact'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex flex-col items-end shrink-0 gap-1.5">
+                          <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${styles.bg}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${styles.dotColor}`} />
+                            {item.status}
+                          </span>
+                          <span className="text-[8px] font-bold text-secondary tracking-wide uppercase">
+                            {new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         </div>
       </div>
