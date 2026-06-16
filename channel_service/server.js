@@ -5,12 +5,13 @@ const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL || "https://catalyst-backend-ldvn.onrender.com/api/webhook/events";
+const channel = "https://catalyst-backend-ldvn.onrender.com/api/webhook/events"
+const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL || channel || "http://localhost:5000/api/webhook/events"; // Replace with your actual CRM webhook URL
 
 app.use(express.json());
 
-// Database setup
-const db = new sqlite3.Database("./channel_service.db");
+const path = require("path");
+const db = new sqlite3.Database(path.join(__dirname, "channel_service.db"));
 
 db.serialize(() => {
   db.run(`
@@ -58,6 +59,96 @@ const EVENT_DELAYS = {
   PURCHASED: 15000,
 };
 
+let eventQueue = [];
+let flushTimeout = null;
+
+async function queueWebhookEvent(communicationId, channelMessageId, event) {
+  eventQueue.push({
+    communicationId,
+    channelMessageId,
+    event,
+    timestamp: new Date().toISOString()
+  });
+
+  if (!flushTimeout) {
+    flushTimeout = setTimeout(flushEventQueue, 500); // Flush events every 500ms
+  }
+}
+
+async function flushEventQueue() {
+  const batch = [...eventQueue];
+  eventQueue = [];
+  flushTimeout = null;
+
+  if (batch.length === 0) return;
+
+  console.log(`[Channel Service] Flushing batch of ${batch.length} events to CRM`);
+
+  try {
+    await sendWebhookBatch(batch);
+  } catch (error) {
+    console.error("[Channel Service] Failed to send event batch. Falling back to singular delivery...", error.message);
+    // Fallback: Send individually in case the CRM's batch processing fails
+    for (const item of batch) {
+      sendWebhookSingular(item).catch(err => {
+        console.error(`[Channel Service] Fallback singular delivery failed for ${item.channelMessageId}:`, err.message);
+      });
+    }
+  }
+}
+
+async function sendWebhookBatch(batch, retryCount = 0) {
+  try {
+    await axios.post(CRM_WEBHOOK_URL, batch);
+    console.log(`[Channel Service] Batch of ${batch.length} events delivered to CRM`);
+  } catch (error) {
+    console.warn(`[Channel Service] Webhook batch delivery error to ${CRM_WEBHOOK_URL}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`);
+    if (retryCount < 3) {
+      console.log(`[Channel Service] Webhook batch delivery FAILED. Retrying (Attempt ${retryCount + 1})...`);
+      return new Promise((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            await sendWebhookBatch(batch, retryCount + 1);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        }, 5000 * (retryCount + 1));
+      });
+    } else {
+      console.error(`[Channel Service] Max retries reached for event batch. Dead-lettering items.`);
+      const ids = batch.map(b => b.channelMessageId);
+      const placeholders = ids.map(() => "?").join(",");
+      db.run(`UPDATE channel_messages SET status = 'DEAD' WHERE channel_message_id IN (${placeholders})`, ids);
+      throw error;
+    }
+  }
+}
+
+async function sendWebhookSingular(item, retryCount = 0) {
+  try {
+    await axios.post(CRM_WEBHOOK_URL, item);
+    console.log(`[Channel Service] Webhook delivered (singular fallback): ${item.event} for ${item.channelMessageId}`);
+  } catch (error) {
+    console.warn(`[Channel Service] Webhook singular delivery error to ${CRM_WEBHOOK_URL}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`);
+    if (retryCount < 3) {
+      return new Promise((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            await sendWebhookSingular(item, retryCount + 1);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        }, 5000 * (retryCount + 1));
+      });
+    } else {
+      db.run("UPDATE channel_messages SET status = 'DEAD' WHERE channel_message_id = ?", [item.channelMessageId]);
+      throw error;
+    }
+  }
+}
+
 // Helper to update message status and record event
 async function recordEvent(messageId, channelMessageId, communicationId, eventType) {
   console.log(`[Channel Service] Event: ${eventType} for message ${channelMessageId}`);
@@ -75,50 +166,14 @@ async function recordEvent(messageId, channelMessageId, communicationId, eventTy
           async (err) => {
             if (err) return reject(err);
             
-            try {
-              // The spec says every event should be sent to CRM
-              await sendWebhook(communicationId, channelMessageId, eventType);
-              resolve();
-            } catch (webhookErr) {
-              // Webhook errors are handled inside sendWebhook with retries
-              resolve(); 
-            }
+            // Queue event for batched webhook delivery
+            queueWebhookEvent(communicationId, channelMessageId, eventType);
+            resolve();
           }
         );
       }
     );
   });
-}
-
-async function sendWebhook(communicationId, channelMessageId, event, retryCount = 0) {
-  try {
-    await axios.post(CRM_WEBHOOK_URL, {
-      communicationId,
-      channelMessageId,
-      event,
-      timestamp: new Date().toISOString()
-    });
-    console.log(`[Channel Service] Webhook delivered: ${event} for ${channelMessageId}`);
-  } catch (error) {
-    if (retryCount < 3) {
-      console.log(`[Channel Service] Webhook FAILED for ${event}. Retrying (Attempt ${retryCount + 1})...`);
-      // Exponential backoff or fixed? Spec says Attempt 1, 2, 3.
-      return new Promise((resolve, reject) => {
-        setTimeout(async () => {
-          try {
-            await sendWebhook(communicationId, channelMessageId, event, retryCount + 1);
-            resolve();
-          } catch (e) {
-            reject(e);
-          }
-        }, 5000 * (retryCount + 1));
-      });
-    } else {
-      console.error(`[Channel Service] Max retries reached for webhook ${event}. Marking message as DEAD.`);
-      db.run("UPDATE channel_messages SET status = 'DEAD' WHERE channel_message_id = ?", [channelMessageId]);
-      throw error;
-    }
-  }
 }
 
 function simulateLifecycle(messageId, channelMessageId, communicationId) {
@@ -156,6 +211,67 @@ function simulateLifecycle(messageId, channelMessageId, communicationId) {
     }, EVENT_DELAYS.DELIVERED);
   }, EVENT_DELAYS.SENT);
 }
+
+app.post("/messages/send-batch", (req, res) => {
+  const { messages } = req.body;
+  
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "messages array is required" });
+  }
+
+  console.log(`[Channel Service] Processing batch of ${messages.length} messages`);
+
+  const results = [];
+  
+  db.serialize(() => {
+    db.run("BEGIN TRANSACTION");
+    
+    const stmt = db.prepare(`
+      INSERT INTO channel_messages 
+      (channel_message_id, communication_id, campaign_id, customer_id, channel, recipient, message, status) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const msg of messages) {
+      const { communicationId, campaignId, customerId, channel, recipient, message } = msg;
+      if (!communicationId || !recipient || !channel) {
+        results.push({ communicationId, error: "Missing required fields", accepted: false });
+        continue;
+      }
+      const channelMessageId = `msg_${crypto.randomBytes(4).toString("hex")}`;
+      
+      stmt.run(
+        [channelMessageId, communicationId, campaignId, customerId, channel, recipient, message, "QUEUED"],
+        function(err) {
+          if (err) {
+            console.error("[Channel Service] Batch item database error:", err);
+            results.push({ communicationId, error: "Database error", accepted: false });
+          } else {
+            const messageId = this.lastID;
+            results.push({ communicationId, accepted: true, channelMessageId });
+            
+            // Start simulation for this message
+            simulateLifecycle(messageId, channelMessageId, communicationId);
+          }
+        }
+      );
+    }
+    
+    stmt.finalize();
+    
+    db.run("COMMIT", (err) => {
+      if (err) {
+        console.error("[Channel Service] Transaction COMMIT error:", err);
+        db.run("ROLLBACK");
+        return res.status(500).json({ error: "Failed to save batch" });
+      }
+      res.json({
+        status: "success",
+        results
+      });
+    });
+  });
+});
 
 app.post("/messages/send", (req, res) => {
   const { communicationId, campaignId, customerId, channel, recipient, message } = req.body;

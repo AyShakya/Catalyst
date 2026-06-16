@@ -21,6 +21,11 @@ export const createBrand = async (name: string, industry?: string): Promise<Bran
   return response.data.data;
 };
 
+export const getBrands = async (): Promise<ApiResponse<Brand[]>> => {
+  const response = await axios.get(`${API_URL}/brands`);
+  return response.data;
+};
+
 export const getBrandAnalytics = async (brandId: string): Promise<ApiResponse<BrandAnalytics>> => {
   const response = await axios.get(`${API_URL}/brands/${brandId}/analytics`);
   return response.data;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -129,6 +130,10 @@ const KPICard = ({ title, value, icon: Icon, description, detail }: { title: str
 
 const OverviewPage: React.FC = () => {
   const navigate = useNavigate();
+  const { brandId: routeBrandId } = useParams();
+  const { activeBrand } = useWorkspace();
+  const brandId = routeBrandId || activeBrand?.id;
+
   const [data, setData] = useState<BrandAnalytics | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [opportunities, setOpportunities] = useState<GrowthOpportunity[]>([]);
@@ -138,13 +143,10 @@ const OverviewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const brandId = localStorage.getItem('catalyst_brand_id');
-    if (!brandId) {
-      navigate('/setup');
-      return;
-    }
+    if (!brandId) return;
 
     const fetchData = async () => {
+      setLoading(true);
       try {
         const [analyticsRes, campaignsRes, oppsRes, briefRes, healthRes, pyramidRes] = await Promise.all([
           getBrandAnalytics(brandId),
@@ -168,7 +170,7 @@ const OverviewPage: React.FC = () => {
     };
 
     fetchData();
-  }, [navigate]);
+  }, [brandId]);
 
   const { summary, distributions } = data || {};
 

@@ -1,15 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrand, uploadData } from '../services/brandService';
 import { fileToBase64 } from '../utils/fileUtils';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 type SetupState = 'form' | 'processing' | 'error';
 
 const BrandSetupPage: React.FC = () => {
   const navigate = useNavigate();
+  const { refreshBrands } = useWorkspace();
   const [state, setState] = useState<SetupState>('form');
   const [brandName, setBrandName] = useState('');
   const [industry, setIndustry] = useState('');
@@ -696,8 +698,9 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
       setCurrentStep(steps.length - 1);
       
       // Final delay for UX
-      setTimeout(() => {
-        navigate('/workspace');
+      setTimeout(async () => {
+        await refreshBrands();
+        navigate(`/workspace/${brand.id}/overview`);
       }, 1000);
 
     } catch (err: any) {
@@ -812,11 +815,11 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
             <div className="space-y-4">
               <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Data Ingestion *</label>
               
-              <div className="flex gap-3 items-start p-4 bg-danger/5 border border-danger/10 rounded-2xl text-danger">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <div className="flex gap-3 items-start p-4 bg-secondary/5 border border-secondary/10 rounded-2xl text-secondary">
+                <Info size={16} className="shrink-0 mt-0.5 text-accent" />
                 <div className="space-y-1">
-                  <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase">
-                    Schema Requirement Warning
+                  <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase text-foreground">
+                    Schema Requirement Notice
                   </p>
                   <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
                     Please ensure your uploaded CSV files exactly match the expected schema columns and headers. Any deviation will result in database ingestion failure.

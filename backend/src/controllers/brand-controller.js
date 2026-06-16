@@ -79,4 +79,13 @@ function groupDistributions(rows) {
   }, {});
 }
 
-module.exports = { createBrand, getBrandDashboard, getBrandAnalytics };
+async function listBrands(req, res) {
+  try {
+    const result = await query("SELECT * FROM brands ORDER BY name ASC");
+    res.json({ status: "success", data: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to list brands" });
+  }
+}
+
+module.exports = { createBrand, getBrandDashboard, getBrandAnalytics, listBrands };

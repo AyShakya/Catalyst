@@ -239,7 +239,16 @@ async function executeCampaign(req, res) {
 async function getCampaignMetrics(req, res) {
   try {
     const { id } = req.params;
-    const result = await query("SELECT * FROM campaign_metrics WHERE campaign_id = $1", [id]);
+    const result = await query(`
+      SELECT m.*, 
+             COALESCE((
+               SELECT COUNT(*)::integer 
+               FROM communications 
+               WHERE campaign_id = m.campaign_id AND status = 'PURCHASED'
+             ), 0) as total_purchased
+      FROM campaign_metrics m
+      WHERE m.campaign_id = $1
+    `, [id]);
     
     if (result.rows.length === 0) {
       return res.json({
@@ -250,6 +259,7 @@ async function getCampaignMetrics(req, res) {
           total_delivered: 0,
           total_opened: 0,
           total_clicked: 0,
+          total_purchased: 0,
           delivery_rate: 0,
           open_rate: 0,
           ctr: 0,

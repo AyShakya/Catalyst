@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   Send, Clock, CheckCircle2, ChevronRight, 
   BarChart3, Users, MessageSquare 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getCampaigns } from '../services/brandService';
-import { CampaignCardSkeleton } from '../components/layout/Skeleton';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { brandId: routeBrandId } = useParams();
+  const { activeBrand } = useWorkspace();
+  const brandId = routeBrandId || activeBrand?.id;
+
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const brandId = localStorage.getItem('catalyst_brand_id');
-    if (!brandId) {
-      navigate('/setup');
-      return;
-    }
+    if (!brandId) return;
 
     const fetchCampaigns = async (showLoading = true) => {
       if (showLoading) setLoading(true);
@@ -41,7 +41,7 @@ const CampaignsPage: React.FC = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [navigate]);
+  }, [brandId]);
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 sm:pb-20">
@@ -51,35 +51,31 @@ const CampaignsPage: React.FC = () => {
           <p className="text-secondary font-medium text-sm sm:text-base">Strategy Performance & Management</p>
         </div>
         <button 
-          onClick={() => navigate('/workspace/strategist')}
+          onClick={() => navigate(`/workspace/${brandId}/strategist`)}
           className="bg-accent text-white px-5 sm:px-6 py-3.5 sm:py-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-accent/90 transition-all flex items-center gap-2 w-full sm:w-auto justify-center shrink-0 shadow-lg shadow-accent/20"
         >
           New Strategy <Send size={16} />
         </button>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <CampaignCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : campaigns.length === 0 ? (
-        <div className="bg-white border border-border rounded-[30px] sm:rounded-[40px] p-8 sm:p-20 text-center">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-card-bg text-secondary rounded-full flex items-center justify-center mx-auto mb-6">
-            <Send size={28} className="sm:size-32" />
+      {campaigns.length === 0 ? (
+        !loading && (
+          <div className="bg-white border border-border rounded-[30px] sm:rounded-[40px] p-8 sm:p-20 text-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-card-bg text-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+              <Send size={28} className="sm:size-32" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-2">No campaigns yet</h2>
+            <p className="text-secondary max-w-sm mx-auto mb-8 font-medium text-sm sm:text-base">
+              Use the AI Strategist to architect and launch your first growth campaign.
+            </p>
+            <button 
+              onClick={() => navigate(`/workspace/${brandId}/strategist`)}
+              className="btn btn-primary px-8 w-full sm:w-auto"
+            >
+              Go to Strategist
+            </button>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black uppercase mb-2">No campaigns yet</h2>
-          <p className="text-secondary max-w-sm mx-auto mb-8 font-medium text-sm sm:text-base">
-            Use the AI Strategist to architect and launch your first growth campaign.
-          </p>
-          <button 
-            onClick={() => navigate('/workspace/strategist')}
-            className="btn btn-primary px-8 w-full sm:w-auto"
-          >
-            Go to Strategist
-          </button>
-        </div>
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           {campaigns.map((campaign, i) => (
@@ -88,7 +84,7 @@ const CampaignsPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              onClick={() => navigate(`/workspace/campaigns/${campaign.id}`)}
+              onClick={() => navigate(`/workspace/${brandId}/campaigns/${campaign.id}`)}
               className="bg-white border border-border rounded-3xl p-5 sm:p-6 hover:border-accent hover:shadow-xl hover:shadow-accent/5 transition-all cursor-pointer group flex flex-col h-full min-w-0"
             >
               <div className="flex justify-between items-start mb-6 gap-2">

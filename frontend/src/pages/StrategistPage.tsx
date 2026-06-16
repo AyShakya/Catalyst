@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   Sparkles, Send, Loader2, Target, Users, 
   MessageSquare, BarChart3, Rocket, Trash2, Edit3,
@@ -35,6 +36,10 @@ const ThinkingDots = () => (
 const StrategistPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { brandId: routeBrandId } = useParams();
+  const { activeBrand } = useWorkspace();
+  const brandId = routeBrandId || activeBrand?.id;
+
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,11 +57,7 @@ const StrategistPage: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const brandId = localStorage.getItem('catalyst_brand_id');
-    if (!brandId) {
-      navigate('/setup');
-      return;
-    }
+    if (!brandId) return;
 
     const controller = new AbortController();
 
@@ -85,7 +86,7 @@ const StrategistPage: React.FC = () => {
     }
 
     return () => controller.abort();
-  }, [navigate, location.search, sessionId]);
+  }, [brandId, location.search, sessionId, navigate]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -108,7 +109,6 @@ const StrategistPage: React.FC = () => {
     try {
       setIsLoading(true);
       setIsBuildingCampaign(true);
-      const brandId = localStorage.getItem('catalyst_brand_id');
       if (!brandId) return;
 
       const res = await getStrategistSession(brandId, sid);
@@ -131,7 +131,6 @@ const StrategistPage: React.FC = () => {
   const handleDeleteSession = async (e: React.MouseEvent, sid: string) => {
     e.stopPropagation();
     try {
-      const brandId = localStorage.getItem('catalyst_brand_id');
       if (!brandId) return;
 
       await closeSession(brandId, sid);
@@ -149,7 +148,6 @@ const StrategistPage: React.FC = () => {
   const executeConfirmedDiscard = async () => {
     if (!sessionId || isLoading || isDiscarding) return;
     
-    const brandId = localStorage.getItem('catalyst_brand_id');
     if (!brandId) return;
 
     setIsDiscarding(true);
@@ -180,13 +178,14 @@ const StrategistPage: React.FC = () => {
     // 1. Immediate guard against concurrent clicks or empty input
     if (!input.trim() || isLoading || status === 'LAUNCHED') return;
 
+    if (!brandId) return;
+
     // 2. Lock UI immediately
     setIsLoading(true);
     
     const userMsg = input.trim();
     const controller = new AbortController();
 
-    const brandId = localStorage.getItem('catalyst_brand_id')!;
     setInput('');
 
     // 3. Optimistic UI: Add user message + placeholder for assistant
@@ -311,7 +310,7 @@ const StrategistPage: React.FC = () => {
   const executeConfirmedLaunch = async () => {
     if (!sessionId || isLaunching || status === 'LAUNCHED' || isLoading) return;
 
-    const brandId = localStorage.getItem('catalyst_brand_id')!;
+    if (!brandId) return;
     setIsLaunching(true);
 
     try {
@@ -323,6 +322,8 @@ const StrategistPage: React.FC = () => {
         setShowConfirmModal(false);
         // Clear active session state from the list immediately
         setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
+        // Redirect to campaigns page to monitor progress
+        navigate(`/workspace/${brandId}/campaigns`);
       }
     } catch (err) {
       console.error(err);
@@ -448,7 +449,14 @@ const StrategistPage: React.FC = () => {
             )}
 
             {messages.length === 0 && isLoading && (
-              <div className="space-y-6">
+              <motion.div 
+                key="chat-history-loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-6"
+              >
                 <div className="flex gap-4">
                   <Skeleton variant="circle" className="w-8 h-8" />
                   <Skeleton className="h-20 w-3/4 rounded-2xl" />
@@ -461,7 +469,7 @@ const StrategistPage: React.FC = () => {
                   <Skeleton variant="circle" className="w-8 h-8" />
                   <Skeleton className="h-32 w-2/3 rounded-2xl" />
                 </div>
-              </div>
+              </motion.div>
             )}
 
             
@@ -535,7 +543,7 @@ const StrategistPage: React.FC = () => {
                   <Users size={18} className="text-accent shrink-0" />
                   <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Audience Discovery</h3>
                 </div>
-                {isBuildingCampaign ? (
+                {isBuildingCampaign && !latestDraft ? (
                   <div className="space-y-4">
                     <div className="flex justify-between items-end border-b border-border pb-4">
                       <Skeleton variant="text" className="w-20" />
@@ -580,7 +588,7 @@ const StrategistPage: React.FC = () => {
                   <Target size={18} className="text-accent shrink-0" />
                   <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest truncate">Campaign Strategy</h3>
                 </div>
-                {isBuildingCampaign ? (
+                {isBuildingCampaign && !latestDraft ? (
                   <div className="space-y-6 flex-1 pr-1">
                     <div>
                       <Skeleton variant="text" className="w-24 mb-2" />
@@ -629,7 +637,7 @@ const StrategistPage: React.FC = () => {
                 <BarChart3 className="absolute -bottom-4 -right-4 w-16 h-16 sm:w-20 sm:h-20 opacity-10" />
                 <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-6 opacity-60">Revenue Forecast</h3>
                 
-                {isBuildingCampaign ? (
+                {isBuildingCampaign && !latestDraft ? (
                   <div className="space-y-4 mb-8">
                     <Skeleton className="bg-white/10 w-24 h-8" />
                     <Skeleton className="bg-white/10 w-full h-12" />

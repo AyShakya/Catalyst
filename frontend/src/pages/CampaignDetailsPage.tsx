@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   ArrowLeft, Target, Users, MessageSquare, 
   BarChart3, Send, CheckCircle2, Clock, Map, Play, Zap,
@@ -42,8 +43,10 @@ const getStatusStyles = (status: string) => {
 };
 
 const CampaignDetailsPage: React.FC = () => {
-  const { id } = useParams();
+  const { id, brandId: routeBrandId } = useParams();
   const navigate = useNavigate();
+  const { activeBrand } = useWorkspace();
+  const brandId = routeBrandId || activeBrand?.id;
   const [campaign, setCampaign] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [milestones, setMilestones] = useState<any[]>([]);
@@ -155,7 +158,7 @@ const CampaignDetailsPage: React.FC = () => {
     return (
       <div className="text-center py-20">
         <h2 className="text-2xl font-black uppercase mb-4">Campaign Not Found</h2>
-        <button onClick={() => navigate('/workspace/campaigns')} className="px-6 py-3 rounded-xl bg-accent text-white font-black text-xs uppercase tracking-widest">Back to Campaigns</button>
+        <button onClick={() => navigate(`/workspace/${brandId || ''}/campaigns`)} className="px-6 py-3 rounded-xl bg-accent text-white font-black text-xs uppercase tracking-widest">Back to Campaigns</button>
       </div>
     );
   }
@@ -163,7 +166,7 @@ const CampaignDetailsPage: React.FC = () => {
   return (
     <div className="space-y-8 pb-20 bg-transparent">
       <button 
-        onClick={() => navigate('/workspace/campaigns')}
+        onClick={() => navigate(`/workspace/${brandId || ''}/campaigns`)}
         className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors font-black text-[10px] uppercase tracking-widest"
       >
         <ArrowLeft size={16} /> Back to Campaigns

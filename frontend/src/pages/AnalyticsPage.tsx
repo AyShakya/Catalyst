@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -16,17 +17,18 @@ import { formatNumber, formatCurrency, formatPercent } from '../utils/numberForm
 
 const AnalyticsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { brandId: routeBrandId } = useParams();
+  const { activeBrand } = useWorkspace();
+  const brandId = routeBrandId || activeBrand?.id;
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const brandId = localStorage.getItem('catalyst_brand_id');
-    if (!brandId) {
-      navigate('/setup');
-      return;
-    }
+    if (!brandId) return;
 
     const fetchData = async () => {
+      setLoading(true);
       try {
         const res = await getCampaigns(brandId);
         setCampaigns(res.data || []);
@@ -38,7 +40,7 @@ const AnalyticsPage: React.FC = () => {
     };
 
     fetchData();
-  }, [navigate]);
+  }, [brandId]);
 
   // Aggregate Metrics
   const totalDelivered = campaigns.reduce((acc, c) => acc + (Number(c.delivered || c.forecast_delivered) || 0), 0);
