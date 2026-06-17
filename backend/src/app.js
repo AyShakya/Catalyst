@@ -57,11 +57,30 @@ const limiter = rateLimit({
 });
 app.use("/api/", limiter);
 
-app.use("/api/upload", uploadRoutes);
+// Stricter Rate Limiter for CPU/Network heavy imports
+const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: isDevOrTest ? 1000 : 5, // Limit to 5 uploads per 10 minutes in prod
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many data uploads, please try again after 10 minutes" }
+});
+
+app.use("/api/upload", uploadLimiter, uploadRoutes);
 app.use("/api/metrics", metricsRoutes);
 app.use("/api/audience", audienceRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/intelligence", intelligenceRoutes);
+
+// Global Centralized Error Handler
+app.use((err, req, res, next) => {
+  console.error("[Global Error Handler] Caught Exception:", err);
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    status: "failed",
+    error: err.message || "Internal server error"
+  });
+});
 
 module.exports = app;

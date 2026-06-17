@@ -1,4 +1,4 @@
-const { query } = require("../../config/db");
+const { query, getClient } = require("../../config/db");
 const aiService = require("../ai/ai-service");
 const campaignIntelligenceService = require("./campaign-intelligence");
 const { generateAudiencePreview } = require("../audience/audience-preview");
@@ -134,37 +134,45 @@ class StrategistChatService {
       }
 
       // 7. Save Progress (Atomic)
-      await query("BEGIN");
+      const client = await getClient();
+      try {
+        await client.query("BEGIN");
 
-      // Save User Message
-      await query(
-        "INSERT INTO strategist_messages (session_id, role, content) VALUES ($1, 'USER', $2)",
-        [actualSessionId, message]
-      );
-
-      // Save Assistant Message
-      await query(
-        "INSERT INTO strategist_messages (session_id, role, content) VALUES ($1, 'ASSISTANT', $2)",
-        [actualSessionId, aiResponse.assistant_message]
-      );
-
-      if (isUpdate) {
-        // Save New Draft Version
-        await query(
-          `INSERT INTO campaign_drafts (session_id, version, draft_json, change_summary, is_milestone) 
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            actualSessionId, 
-            nextVersion, 
-            JSON.stringify(finalDraft), 
-            aiResponse.change_summary,
-            !!aiResponse.is_milestone
-          ]
+        // Save User Message
+        await client.query(
+          "INSERT INTO strategist_messages (session_id, role, content) VALUES ($1, 'USER', $2)",
+          [actualSessionId, message]
         );
-      }
 
-      await query("UPDATE strategist_sessions SET updated_at = NOW() WHERE id = $1", [actualSessionId]);
-      await query("COMMIT");
+        // Save Assistant Message
+        await client.query(
+          "INSERT INTO strategist_messages (session_id, role, content) VALUES ($1, 'ASSISTANT', $2)",
+          [actualSessionId, aiResponse.assistant_message]
+        );
+
+        if (isUpdate) {
+          // Save New Draft Version
+          await client.query(
+            `INSERT INTO campaign_drafts (session_id, version, draft_json, change_summary, is_milestone) 
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              actualSessionId, 
+              nextVersion, 
+              JSON.stringify(finalDraft), 
+              aiResponse.change_summary,
+              !!aiResponse.is_milestone
+            ]
+          );
+        }
+
+        await client.query("UPDATE strategist_sessions SET updated_at = NOW() WHERE id = $1", [actualSessionId]);
+        await client.query("COMMIT");
+      } catch (txnError) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw txnError;
+      } finally {
+        client.release();
+      }
 
       return {
         sessionId: actualSessionId,
@@ -210,47 +218,55 @@ class StrategistChatService {
 
     const draft = draftRes.rows[0].draft_json;
 
-    await query("BEGIN");
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
 
-    // 1. Create Formal Campaign
-    const ALLOWED_GOALS = ['RETENTION', 'ACQUISITION', 'UPSELL', 'WIN_BACK', 'BRAND_AWARENESS'];
-    const goal = ALLOWED_GOALS.includes(draft.goal?.toUpperCase()) ? draft.goal.toUpperCase() : 'RETENTION';
+      // 1. Create Formal Campaign
+      const ALLOWED_GOALS = ['RETENTION', 'ACQUISITION', 'UPSELL', 'WIN_BACK', 'BRAND_AWARENESS'];
+      const goal = ALLOWED_GOALS.includes(draft.goal?.toUpperCase()) ? draft.goal.toUpperCase() : 'RETENTION';
 
-    const insertSQL = `
-      INSERT INTO campaigns (
-        brand_id, goal, campaign_name, campaign_prompt, channel, 
-        message_template, reasoning, status, audience_size, 
-        forecast_delivered, forecast_opened, forecast_clicked, 
-        forecast_purchased, filter_plan, session_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      RETURNING id
-    `;
+      const insertSQL = `
+        INSERT INTO campaigns (
+          brand_id, goal, campaign_name, campaign_prompt, channel, 
+          message_template, reasoning, status, audience_size, 
+          forecast_delivered, forecast_opened, forecast_clicked, 
+          forecast_purchased, filter_plan, session_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING id
+      `;
 
-    const campaignRes = await query(insertSQL, [
-      brandId,
-      goal,
-      draft.campaign_name,
-      'Strategist Session Campaign',
-      draft.channel,
-      draft.message,
-      draft.reasoning,
-      'DRAFT', // Starts as DRAFT, then move to executeCampaign flow
-      draft.audience_snapshot.audience_size,
-      draft.forecast.delivered,
-      draft.forecast.opened,
-      draft.forecast.clicked,
-      draft.forecast.conversions,
-      JSON.stringify(draft.segment_name ? { logic: 'SEGMENT', segment_name: draft.segment_name } : { filters: draft.filters }),
-      sessionId
-    ]);
+      const campaignRes = await client.query(insertSQL, [
+        brandId,
+        goal,
+        draft.campaign_name,
+        'Strategist Session Campaign',
+        draft.channel,
+        draft.message,
+        draft.reasoning,
+        'DRAFT', // Starts as DRAFT, then move to executeCampaign flow
+        draft.audience_snapshot.audience_size,
+        draft.forecast.delivered,
+        draft.forecast.opened,
+        draft.forecast.clicked,
+        draft.forecast.conversions,
+        JSON.stringify(draft.segment_name ? { logic: 'SEGMENT', segment_name: draft.segment_name } : { filters: draft.filters }),
+        sessionId
+      ]);
 
-    // 2. Lock Session
-    await query(
-      "UPDATE strategist_sessions SET status = 'LAUNCHED', updated_at = NOW() WHERE id = $1",
-      [sessionId]
-    );
+      // 2. Lock Session
+      await client.query(
+        "UPDATE strategist_sessions SET status = 'LAUNCHED', updated_at = NOW() WHERE id = $1",
+        [sessionId]
+      );
 
-    await query("COMMIT");
+      await client.query("COMMIT");
+    } catch (txnError) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw txnError;
+    } finally {
+      client.release();
+    }
 
     return {
       campaignId: campaignRes.rows[0].id,

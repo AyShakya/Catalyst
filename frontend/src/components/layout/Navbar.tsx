@@ -47,7 +47,7 @@ const Navbar: React.FC = () => {
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-8">
           <Link to="/" className="text-xs font-black uppercase tracking-widest text-secondary hover:text-foreground transition-colors">Platform</Link>
-          <Link to="/" className="text-xs font-black uppercase tracking-widest text-secondary hover:text-foreground transition-colors">Solutions</Link>
+          <Link to="/docx" className="text-xs font-black uppercase tracking-widest text-secondary hover:text-foreground transition-colors">Docx</Link>
           <Link to="/" className="text-xs font-black uppercase tracking-widest text-secondary hover:text-foreground transition-colors">Pricing</Link>
           <Link 
             to={hasWorkspace ? "/workspace" : "/setup"} 
@@ -76,7 +76,7 @@ const Navbar: React.FC = () => {
             className="absolute top-full left-0 right-0 bg-white/90 backdrop-blur-lg border-b border-border p-6 flex flex-col gap-6 md:hidden shadow-xl"
           >
             <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Platform</Link>
-            <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Solutions</Link>
+            <Link to="/docx" className="text-sm font-black uppercase tracking-widest text-secondary">Docx</Link>
             <Link to="/" className="text-sm font-black uppercase tracking-widest text-secondary">Pricing</Link>
             <Link 
               to={hasWorkspace ? "/workspace" : "/setup"}  

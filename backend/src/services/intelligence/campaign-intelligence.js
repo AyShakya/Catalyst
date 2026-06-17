@@ -1,4 +1,4 @@
-const { query } = require("../../config/db");
+const { query, getClient } = require("../../config/db");
 
 /**
  * Campaign Intelligence Layer
@@ -39,32 +39,39 @@ class CampaignIntelligenceService {
 
       // 2. Persist the results in the storage table
       // Start a transaction for the upserts
-      await query("BEGIN");
-      
-      // Clear existing summaries for this brand to handle changed goals
-      await query("DELETE FROM campaign_intelligence_summaries WHERE brand_id = $1", [brandId]);
+      const client = await getClient();
+      try {
+        await client.query("BEGIN");
+        
+        // Clear existing summaries for this brand to handle changed goals
+        await client.query("DELETE FROM campaign_intelligence_summaries WHERE brand_id = $1", [brandId]);
 
-      for (const row of result.rows) {
-        await query(
-          `INSERT INTO campaign_intelligence_summaries 
-           (brand_id, goal, campaign_count, best_channel, avg_ctr, avg_conversion_rate, total_revenue, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-          [
-            brandId, 
-            row.goal, 
-            parseInt(row.campaign_count), 
-            row.best_channel, 
-            row.avg_ctr, 
-            row.avg_conversion_rate, 
-            row.total_revenue
-          ]
-        );
+        for (const row of result.rows) {
+          await client.query(
+            `INSERT INTO campaign_intelligence_summaries 
+             (brand_id, goal, campaign_count, best_channel, avg_ctr, avg_conversion_rate, total_revenue, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+            [
+              brandId, 
+              row.goal, 
+              parseInt(row.campaign_count), 
+              row.best_channel, 
+              row.avg_ctr, 
+              row.avg_conversion_rate, 
+              row.total_revenue
+            ]
+          );
+        }
+
+        await client.query("COMMIT");
+      } catch (txnError) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw txnError;
+      } finally {
+        client.release();
       }
-
-      await query("COMMIT");
       console.log(`Campaign intelligence refreshed for brand ${brandId}`);
     } catch (error) {
-      await query("ROLLBACK").catch(() => {});
       console.error(`Failed to refresh campaign intelligence for ${brandId}:`, error);
     }
   }

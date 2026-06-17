@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Send, BarChart2, LogOut } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Send, BarChart2, LogOut, BookOpen } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 
 const SidebarLink = ({ to, icon: Icon, children }: { to: string, icon: any, children: React.ReactNode }) => (
@@ -38,7 +38,7 @@ const WorkspaceLayout: React.FC = () => {
     const pathParts = location.pathname.split('/').filter(Boolean);
     if (pathParts[0] === 'workspace') {
       const secondPart = pathParts[1];
-      const legacyRoutes = ['overview', 'strategist', 'campaigns', 'analytics'];
+      const legacyRoutes = ['overview', 'strategist', 'campaigns', 'analytics', 'docx'];
       
       // If the brand ID is missing (either pathname is exactly /workspace or contains a legacy route tab next)
       if (!secondPart || legacyRoutes.includes(secondPart)) {
@@ -56,7 +56,7 @@ const WorkspaceLayout: React.FC = () => {
 
   const handleBrandChange = (newBrandId: string) => {
     const pathParts = location.pathname.split('/').filter(Boolean);
-    // Preserves the current tab, e.g. strategist, campaigns, overview
+    // Preserves the current tab, e.g. strategist, campaigns, overview, docx
     const currentTab = pathParts.length > 2 ? pathParts.slice(2).join('/') : 'overview';
     navigate(`/workspace/${newBrandId}/${currentTab}`);
   };
@@ -117,6 +117,7 @@ const WorkspaceLayout: React.FC = () => {
           <SidebarLink to={`/workspace/${activeBrand?.id || ''}/strategist`} icon={MessageSquare}>Strategist</SidebarLink>
           <SidebarLink to={`/workspace/${activeBrand?.id || ''}/campaigns`} icon={Send}>Campaigns</SidebarLink>
           <SidebarLink to={`/workspace/${activeBrand?.id || ''}/analytics`} icon={BarChart2}>Analytics</SidebarLink>
+          <SidebarLink to={`/workspace/${activeBrand?.id || ''}/docx`} icon={BookOpen}>Docx</SidebarLink>
         </nav>
 
         <div className="hidden lg:block pt-6 border-t border-border mt-auto">

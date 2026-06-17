@@ -16,6 +16,7 @@ const StrategistPage = lazy(() => import('./pages/StrategistPage'));
 const CampaignsPage = lazy(() => import('./pages/CampaignsPage'));
 const CampaignDetailsPage = lazy(() => import('./pages/CampaignDetailsPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const DocxPage = lazy(() => import('./pages/DocxPage'));
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/setup" element={<BrandSetupPage />} />
+                <Route path="/docx" element={<DocxPage />} />
 
                 {/* Brand-specific workspace routes */}
                 <Route path="/workspace/:brandId" element={<WorkspaceLayout />}>
@@ -42,6 +44,7 @@ function App() {
                   <Route path="campaigns" element={<CampaignsPage />} />
                   <Route path="campaigns/:id" element={<CampaignDetailsPage />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="docx" element={<DocxPage />} />
                 </Route>
 
                 {/* Fallback legacy routes without brandId */}
@@ -52,6 +55,7 @@ function App() {
                   <Route path="campaigns" element={<CampaignsPage />} />
                   <Route path="campaigns/:id" element={<CampaignDetailsPage />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="docx" element={<DocxPage />} />
                 </Route>
               </Routes>
             </Suspense>

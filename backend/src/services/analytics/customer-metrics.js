@@ -16,8 +16,7 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
         MAX(o.amount) as highest_order_value,
         MIN(o.amount) as lowest_order_value,
         MIN(o.order_date) as first_purchase_date,
-        MAX(o.order_date) as last_purchase_date,
-        ARRAY_AGG(o.order_date ORDER BY o.order_date) FILTER (WHERE o.order_date IS NOT NULL) as order_dates
+        MAX(o.order_date) as last_purchase_date
       FROM customer_base cb
       LEFT JOIN orders o
         ON o.customer_id = cb.customer_id
@@ -38,17 +37,9 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
           WHEN last_purchase_date IS NULL THEN NULL
           ELSE (CURRENT_DATE - last_purchase_date)::INTEGER
         END as days_since_last_purchase,
-        order_dates,
         CASE
           WHEN total_orders <= 1 THEN NULL
-          ELSE (
-            SELECT AVG(gap)::NUMERIC
-            FROM (
-              SELECT (order_dates[i + 1] - order_dates[i])::INTEGER as gap
-              FROM generate_subscripts(order_dates, 1) i
-              WHERE i < array_length(order_dates, 1)
-            ) gaps
-          )
+          ELSE (last_purchase_date - first_purchase_date)::NUMERIC / (total_orders - 1)
         END as avg_days_between_orders
       FROM order_stats
     ),
@@ -136,9 +127,9 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
         ROUND(
           (
             CASE
-              WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL AND fc.days_since_last_purchase IS NOT NULL THEN
+              WHEN pr.avg_gap_days > 0 AND fc.avg_days_between_orders IS NOT NULL AND fc.avg_days_between_orders > 0 AND fc.days_since_last_purchase IS NOT NULL THEN
                 LEAST(
-                  ((fc.days_since_last_purchase::NUMERIC / NULLIF(fc.avg_days_between_orders, 0)) * 100),
+                  ((fc.days_since_last_purchase::NUMERIC / fc.avg_days_between_orders) * 100),
                   100
                 )
               ELSE 0

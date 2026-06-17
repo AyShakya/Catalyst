@@ -1,4 +1,4 @@
-const { query } = require("../config/db");
+const { query, getClient } = require("../config/db");
 const { calculateForecast } = require("../services/audience/forecasting-engine");
 const { generateCampaignStrategy } = require("../services/audience/ai-strategist");
 const { buildAudienceQuery } = require("../services/audience/query-builder");
@@ -183,34 +183,42 @@ async function executeCampaign(req, res) {
     );
 
     // 3. START TRANSACTION: Freeze audience and create communication tasks
-    await query("BEGIN");
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
 
-    // Clear any existing snapshot for this campaign (idempotency)
-    await query("DELETE FROM campaign_audience WHERE campaign_id = $1", [id]);
-    await query("DELETE FROM communications WHERE campaign_id = $1", [id]);
+      // Clear any existing snapshot for this campaign (idempotency)
+      await client.query("DELETE FROM campaign_audience WHERE campaign_id = $1", [id]);
+      await client.query("DELETE FROM communications WHERE campaign_id = $1", [id]);
 
-    // Freeze into campaign_audience
-    // We adjust the SQL to include the campaign_id literal
-    const campaignIdParamIndex = audienceParams.length + 1;
-    const freezeSql = `
-      INSERT INTO campaign_audience (campaign_id, customer_id)
-      ${audienceSql.replace('SELECT cm.customer_id', `SELECT $${campaignIdParamIndex}, cm.customer_id`)}
-    `;
-    await query(freezeSql, [...audienceParams, id]);
+      // Freeze into campaign_audience
+      // We adjust the SQL to include the campaign_id literal
+      const campaignIdParamIndex = audienceParams.length + 1;
+      const freezeSql = `
+        INSERT INTO campaign_audience (campaign_id, customer_id)
+        ${audienceSql.replace('SELECT cm.customer_id', `SELECT $${campaignIdParamIndex}, cm.customer_id`)}
+      `;
+      await client.query(freezeSql, [...audienceParams, id]);
 
-    // Populate communications (retrieving channel from campaign)
-    const commSql = `
-      INSERT INTO communications (campaign_id, customer_id, channel, status)
-      SELECT $1, customer_id, $2, 'PENDING'
-      FROM campaign_audience
-      WHERE campaign_id = $1
-    `;
-    await query(commSql, [id, campaign.channel]);
+      // Populate communications (retrieving channel from campaign)
+      const commSql = `
+        INSERT INTO communications (campaign_id, customer_id, channel, status)
+        SELECT $1, customer_id, $2, 'PENDING'
+        FROM campaign_audience
+        WHERE campaign_id = $1
+      `;
+      await client.query(commSql, [id, campaign.channel]);
 
-    // Update campaign status
-    await query("UPDATE campaigns SET status = 'RUNNING' WHERE id = $1", [id]);
+      // Update campaign status
+      await client.query("UPDATE campaigns SET status = 'RUNNING' WHERE id = $1", [id]);
 
-    await query("COMMIT");
+      await client.query("COMMIT");
+    } catch (txnError) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw txnError;
+    } finally {
+      client.release();
+    }
 
     // 4. Trigger Dispatch Phase (Asynchronous)
     setImmediate(() => {
@@ -227,7 +235,6 @@ async function executeCampaign(req, res) {
     });
 
   } catch (error) {
-    await query("ROLLBACK");
     console.error("Campaign execution error:", error);
     res.status(500).json({ 
       error: "Campaign execution failed during audience freezing",

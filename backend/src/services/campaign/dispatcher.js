@@ -1,4 +1,4 @@
-const { query } = require("../../config/db");
+const { query, getClient } = require("../../config/db");
 
 const CHANNEL_SERVICE_URL = process.env.CHANNEL_SERVICE_URL || "http://localhost:3001";
 
@@ -101,31 +101,39 @@ async function processDispatchBatch(campaign, comms) {
 
     const result = await response.json();
     if (result.status === "success" && Array.isArray(result.results)) {
-      await query("BEGIN");
+      const client = await getClient();
+      try {
+        await client.query("BEGIN");
 
-      for (const resItem of result.results) {
-        if (resItem.accepted) {
-          await query(
-            "UPDATE communications SET status = 'SENT', updated_at = NOW(), sent_at = NOW() WHERE id = $1",
-            [resItem.communicationId]
-          );
-          await query(
-            "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, 'SENT', $2)",
-            [resItem.communicationId, JSON.stringify({ channelMessageId: resItem.channelMessageId })]
-          );
-        } else {
-          await query(
-            "UPDATE communications SET status = 'FAILED', updated_at = NOW() WHERE id = $1",
-            [resItem.communicationId]
-          );
-          await query(
-            "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, 'FAILED', $2)",
-            [resItem.communicationId, JSON.stringify({ error: resItem.error || "Channel Service rejected request" })]
-          );
+        for (const resItem of result.results) {
+          if (resItem.accepted) {
+            await client.query(
+              "UPDATE communications SET status = 'SENT', updated_at = NOW(), sent_at = NOW() WHERE id = $1",
+              [resItem.communicationId]
+            );
+            await client.query(
+              "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, 'SENT', $2) ON CONFLICT (communication_id, event_type) DO NOTHING",
+              [resItem.communicationId, JSON.stringify({ channelMessageId: resItem.channelMessageId })]
+            );
+          } else {
+            await client.query(
+              "UPDATE communications SET status = 'FAILED', updated_at = NOW() WHERE id = $1",
+              [resItem.communicationId]
+            );
+            await client.query(
+              "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, 'FAILED', $2) ON CONFLICT (communication_id, event_type) DO NOTHING",
+              [resItem.communicationId, JSON.stringify({ error: resItem.error || "Channel Service rejected request" })]
+            );
+          }
         }
-      }
 
-      await query("COMMIT");
+        await client.query("COMMIT");
+      } catch (txnError) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw txnError;
+      } finally {
+        client.release();
+      }
       return true;
     } else {
       throw new Error("Invalid batch response format");
@@ -166,19 +174,27 @@ async function processDispatch(campaign, comm) {
 
     if (response.ok && result.accepted) {
       // Success: Update status and record SENT event
-      await query("BEGIN");
-      
-      await query(
-        "UPDATE communications SET status = 'SENT', updated_at = NOW(), sent_at = NOW() WHERE id = $1",
-        [comm.id]
-      );
+      const client = await getClient();
+      try {
+        await client.query("BEGIN");
+        
+        await client.query(
+          "UPDATE communications SET status = 'SENT', updated_at = NOW(), sent_at = NOW() WHERE id = $1",
+          [comm.id]
+        );
 
-      await query(
-        "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, 'SENT', $2)",
-        [comm.id, JSON.stringify({ channelMessageId: result.channelMessageId })]
-      );
+        await client.query(
+          "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, 'SENT', $2) ON CONFLICT (communication_id, event_type) DO NOTHING",
+          [comm.id, JSON.stringify({ channelMessageId: result.channelMessageId })]
+        );
 
-      await query("COMMIT");
+        await client.query("COMMIT");
+      } catch (txnError) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw txnError;
+      } finally {
+        client.release();
+      }
     } else {
       // Failure at Channel Service
       await updateStatus(comm.id, 'FAILED', { error: result.error || "Channel Service rejected request" });
@@ -223,16 +239,24 @@ function getRecipient(channel, comm) {
  * Helper to update communication status
  */
 async function updateStatus(commId, status, payload = {}) {
-  await query("BEGIN");
-  await query(
-    "UPDATE communications SET status = $1, updated_at = NOW() WHERE id = $2",
-    [status, commId]
-  );
-  await query(
-    "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, $2, $3)",
-    [commId, status, JSON.stringify(payload)]
-  );
-  await query("COMMIT");
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "UPDATE communications SET status = $1, updated_at = NOW() WHERE id = $2",
+      [status, commId]
+    );
+    await client.query(
+      "INSERT INTO communication_events (communication_id, event_type, payload) VALUES ($1, $2, $3) ON CONFLICT (communication_id, event_type) DO NOTHING",
+      [commId, status, JSON.stringify(payload)]
+    );
+    await client.query("COMMIT");
+  } catch (txnError) {
+    if (client) await client.query("ROLLBACK").catch(() => {});
+    console.error(`Failed to update status to ${status} for communication ${commId}:`, txnError.message);
+  } finally {
+    if (client) client.release();
+  }
 }
 
 module.exports = { dispatchCampaign };

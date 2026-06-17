@@ -177,7 +177,8 @@ CREATE TABLE IF NOT EXISTS communication_events (
   communication_id UUID NOT NULL REFERENCES communications(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL CHECK (event_type IN ('SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'PURCHASED', 'FAILED')),
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  payload JSONB
+  payload JSONB,
+  CONSTRAINT unique_communication_event UNIQUE(communication_id, event_type)
 );
 
 CREATE TABLE IF NOT EXISTS campaign_metrics (
