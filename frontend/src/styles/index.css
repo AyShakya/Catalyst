@@ -21,15 +21,9 @@
   * {
     @apply border-border;
   }
-  html, body {
-    scroll-behavior: smooth;
-  }
   body {
     @apply bg-transparent text-foreground antialiased;
     font-family: var(--font-sans);
-  }
-  .overflow-y-auto, .overflow-y-scroll, .overflow-auto, .overflow-scroll {
-    scroll-behavior: smooth;
   }
 }
 

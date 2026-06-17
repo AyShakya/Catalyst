@@ -890,14 +890,14 @@ const StrategistPage: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="px-5 py-3 border border-border rounded-xl font-black text-[10px] uppercase tracking-widest text-secondary hover:bg-card-bg transition-all hover:text-foreground active:scale-[0.98]"
+                  className="px-5 py-2.5 border border-border rounded-xl font-bold text-xs uppercase tracking-wider text-secondary hover:bg-card-bg transition-all hover:text-foreground active:scale-[0.98]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={executeConfirmedLaunch}
                   disabled={isLaunching}
-                  className="px-5 py-3 bg-accent text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-accent/20 flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-accent text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-accent/20 flex items-center gap-2 disabled:opacity-50"
                 >
                   {isLaunching ? (
                     <>
@@ -937,18 +937,18 @@ const StrategistPage: React.FC = () => {
             >
               {/* Header */}
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-error/10 text-error flex items-center justify-center shrink-0 shadow-inner">
+                <div className="w-12 h-12 rounded-2xl bg-danger/10 text-danger flex items-center justify-center shrink-0 shadow-inner">
                   <Trash2 size={24} />
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-error mb-1">Confirm Action</h4>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-danger mb-1">Confirm Action</h4>
                   <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-foreground">Discard Session?</h3>
                 </div>
               </div>
 
               {/* Message */}
-              <div className="flex gap-3 items-start bg-error/5 border border-error/10 p-3.5 rounded-2xl">
-                <AlertCircle size={18} className="text-error shrink-0 mt-0.5" />
+              <div className="flex gap-3 items-start bg-danger/5 border border-danger/10 p-3.5 rounded-2xl">
+                <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />
                 <p className="text-xs text-secondary leading-relaxed font-medium">
                   Are you sure you want to discard this strategy chat? This will permanently delete the session, chat history, and all draft details. This action cannot be undone.
                 </p>
@@ -958,14 +958,14 @@ const StrategistPage: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   onClick={() => setShowDiscardModal(false)}
-                  className="px-5 py-3 border border-border rounded-xl font-black text-[10px] uppercase tracking-widest text-secondary hover:bg-card-bg transition-all hover:text-foreground active:scale-[0.98]"
+                  className="px-5 py-2.5 border border-border rounded-xl font-bold text-xs uppercase tracking-wider text-secondary hover:bg-card-bg transition-all hover:text-foreground active:scale-[0.98]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={executeConfirmedDiscard}
                   disabled={isDiscarding}
-                  className="px-5 py-3 bg-error text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-error/20 flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-[#ef4444] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#d93838] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-red-600/20 flex items-center gap-2 disabled:opacity-50"
                 >
                   {isDiscarding ? (
                     <>

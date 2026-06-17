@@ -27,6 +27,8 @@ const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [runningJob, setRunningJob] = useState<any>(null);
+  const [mountTrend, setMountTrend] = useState(false);
+  const [mountChannel, setMountChannel] = useState(false);
 
   const { showToast } = useToast();
 
@@ -135,6 +137,17 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const showSkeletons = loading && campaigns.length === 0;
+
+  useEffect(() => {
+    if (!showSkeletons) {
+      setMountTrend(true);
+      const timer = setTimeout(() => setMountChannel(true), 350);
+      return () => clearTimeout(timer);
+    } else {
+      setMountTrend(false);
+      setMountChannel(false);
+    }
+  }, [showSkeletons]);
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-10 sm:pb-20">

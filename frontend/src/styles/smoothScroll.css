@@ -1,0 +1,10 @@
+/* Smooth scroll wrapper and content */
+.smooth-scroll-wrapper {
+  height: 100vh;
+  overflow: hidden; /* hide native scrollbar */
+  position: relative;
+}
+
+.smooth-scroll-content {
+  min-height: 100%;
+}

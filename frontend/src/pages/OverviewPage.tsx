@@ -154,6 +154,10 @@ const OverviewPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [runningJob, setRunningJob] = useState<any>(null);
 
+  const [mountMatrix, setMountMatrix] = useState(false);
+  const [mountDonut, setMountDonut] = useState(false);
+  const [mountPyramid, setMountPyramid] = useState(false);
+
   // States for Ingestion Upload Modal
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [customerUploadFile, setCustomerUploadFile] = useState<File | null>(null);
@@ -306,6 +310,22 @@ const OverviewPage: React.FC = () => {
 
   const { summary, distributions } = data || {};
   const showSkeletons = loading && (!data || !data.summary);
+
+  useEffect(() => {
+    if (!showSkeletons) {
+      setMountMatrix(true);
+      const timer1 = setTimeout(() => setMountDonut(true), 350);
+      const timer2 = setTimeout(() => setMountPyramid(true), 700);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    } else {
+      setMountMatrix(false);
+      setMountDonut(false);
+      setMountPyramid(false);
+    }
+  }, [showSkeletons]);
 
   if (!loading && (!data || !data.summary)) {
     return (
@@ -616,7 +636,11 @@ const OverviewPage: React.FC = () => {
                   </div>
                   <div className="h-80 sm:h-96 w-full">
                     <React.Suspense fallback={<MatrixSkeleton />}>
-                      <CustomerHealthMatrix data={healthMatrix} />
+                      {mountMatrix ? (
+                        <CustomerHealthMatrix data={healthMatrix} />
+                      ) : (
+                        <MatrixSkeleton />
+                      )}
                     </React.Suspense>
                   </div>
                   <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -652,7 +676,11 @@ const OverviewPage: React.FC = () => {
                   </h3>
                   <div className="flex-1 min-h-[300px]">
                     <React.Suspense fallback={<DonutSkeleton />}>
-                      <RevenueDonut data={distributions?.total_spend || []} />
+                      {mountDonut ? (
+                        <RevenueDonut data={distributions?.total_spend || []} />
+                      ) : (
+                        <DonutSkeleton />
+                      )}
                     </React.Suspense>
                   </div>
                 </div>
@@ -673,7 +701,11 @@ const OverviewPage: React.FC = () => {
                   </h3>
                   <div className="flex-1 flex items-center">
                     <React.Suspense fallback={<PyramidSkeleton />}>
-                      <ValuePyramid data={valuePyramid} />
+                      {mountPyramid ? (
+                        <ValuePyramid data={valuePyramid} />
+                      ) : (
+                        <PyramidSkeleton />
+                      )}
                     </React.Suspense>
                   </div>
                   <p className="text-[10px] text-secondary font-medium italic mt-6 leading-relaxed">

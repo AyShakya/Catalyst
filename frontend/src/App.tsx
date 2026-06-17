@@ -1,11 +1,12 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import WorkspaceLayout from './components/layout/WorkspaceLayout';
 import BackgroundEffect from './components/layout/BackgroundEffect';
 import { Skeleton } from './components/layout/Skeleton';
 import './styles/App.css';
 import Lenis from 'lenis';
+import SmoothScrollProvider from './components/layout/SmoothScrollProvider';
 
 import { WorkspaceProvider } from './context/WorkspaceContext';
 import { ToastProvider } from './context/ToastContext';
@@ -20,31 +21,21 @@ const CampaignDetailsPage = lazy(() => import('./pages/CampaignDetailsPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const DocxPage = lazy(() => import('./pages/DocxPage'));
 
-function App() {
+const ScrollManager: React.FC = () => {
+  const { pathname } = useLocation();
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-    });
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
 
-    let rafId: number;
-    function raf(time: number) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, []);
-
+function App() {
   return (
     <Router>
+      <ScrollManager />
       <ToastProvider>
         <WorkspaceProvider>
-          <div className="app-container relative min-h-screen">
+          <SmoothScrollProvider>
             <BackgroundEffect />
             <div className="relative z-10">
               <Navbar />
@@ -80,7 +71,7 @@ function App() {
               </Routes>
             </Suspense>
           </div>
-        </div>
+        </SmoothScrollProvider>
       </WorkspaceProvider>
       </ToastProvider>
     </Router>

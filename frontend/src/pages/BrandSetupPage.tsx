@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle, Info, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createBrand, uploadData, getMetricsJobStatus } from '../services/brandService';
+import { createBrand, uploadData, getMetricsJobStatus, getBrands } from '../services/brandService';
 import { fileToBase64 } from '../utils/fileUtils';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useToast } from '../context/ToastContext';
 
-type SetupState = 'form' | 'processing' | 'error';
+type SetupState = 'form' | 'login' | 'processing' | 'error' | 'logging_in';
 
 const BrandSetupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +21,10 @@ const BrandSetupPage: React.FC = () => {
   const [orderFile, setOrderFile] = useState<File | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const [loginBrandName, setLoginBrandName] = useState('');
+  const [loginBrandId, setLoginBrandId] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const loadDemoData = () => {
     setBrandName('Global Electronics Corp');
@@ -737,6 +741,85 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
     }
   };
 
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginBrandName.trim() || !loginBrandId.trim()) return;
+
+    setState('logging_in');
+    setLoginError('');
+
+    try {
+      // Fetch all available brands from database
+      const response = await getBrands();
+      const brandsList = response.data || [];
+
+      // Find if brand ID exists
+      const matchedBrand = brandsList.find(
+        (b) => b.id.toLowerCase() === loginBrandId.trim().toLowerCase()
+      );
+
+      // Add a slight delay to make the transition feel organic (loading indicator)
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      if (!matchedBrand) {
+        throw new Error('Brand workspace not found with the provided Brand ID.');
+      }
+
+      // Check if brand name matches (for user validation correctness)
+      if (
+        matchedBrand.name.toLowerCase().replace(/\s+/g, '') !==
+        loginBrandName.trim().toLowerCase().replace(/\s+/g, '')
+      ) {
+        throw new Error('Workspace name mismatch. Please double check the Brand Name.');
+      }
+
+      // If valid, save it to local storage
+      localStorage.setItem('catalyst_brand_id', matchedBrand.id);
+      
+      // Refresh Workspace brands context
+      await refreshBrands();
+      
+      showToast('Welcome back! Connected to workspace.', 'success');
+      navigate(`/workspace/${matchedBrand.id}/overview`);
+    } catch (err: any) {
+      console.error(err);
+      setState('login');
+      const errorMsg = err.message || 'Failed to connect to workspace. Please check details.';
+      setLoginError(errorMsg);
+      showToast(errorMsg, 'error');
+    }
+  };
+
+  if (state === 'logging_in') {
+    return (
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4 sm:p-6">
+        <div className="max-w-md w-full text-center">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 text-accent animate-spin mx-auto mb-6" />
+            <h2 className="text-xl sm:text-2xl font-black mb-2 uppercase">Connecting Workspace</h2>
+            <p className="text-sm sm:text-base text-secondary">Verifying brand workspace details...</p>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="p-4 bg-accent/5 border border-accent/10 rounded-2xl text-accent max-w-sm mx-auto text-left"
+          >
+            <p className="text-[10px] font-black uppercase tracking-wider mb-1">Securing Connection</p>
+            <p className="text-[11px] text-secondary font-semibold">
+              Loading transactions, cohort analysis, and ML strategists for the brand...
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   if (state === 'processing') {
     return (
       <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4 sm:p-6">
@@ -823,116 +906,209 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
           <ArrowLeft size={14} /> Back to Home
         </button>
 
-        <div className="bg-white p-6 sm:p-10 rounded-2xl sm:rounded-3xl border border-border shadow-xl">
-          <div className="mb-8 sm:mb-10 min-w-0">
-            <h1 className="text-2xl sm:text-4xl font-black mb-3 sm:mb-4 uppercase truncate sm:whitespace-normal">Setup Brand</h1>
-            <p className="text-sm sm:text-base text-secondary leading-relaxed">
-              Create your intelligence workspace by uploading your customer and transaction history.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Brand Name *</label>
-                <input 
-                  type="text" 
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
-                  placeholder="e.g. Acme Corp"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Industry</label>
-                <input 
-                  type="text" 
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
-                  placeholder="e.g. Retail"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Data Ingestion *</label>
-              
-              <div className="flex gap-3 items-start p-4 bg-secondary/5 border border-secondary/10 rounded-2xl text-secondary">
-                <Info size={16} className="shrink-0 mt-0.5 text-accent" />
-                <div className="space-y-1">
-                  <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase text-foreground">
-                    Schema Requirement Notice
-                  </p>
-                  <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
-                    Please ensure your uploaded CSV files exactly match the expected schema columns and headers. Any deviation will result in database ingestion failure.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div 
-                  {...getCustomerProps()} 
-                  className={`p-6 sm:p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] ${
-                    isCustomerActive ? 'border-accent bg-accent/5' : customerFile ? 'border-success bg-success/5' : 'border-border hover:border-accent'
-                  }`}
-                >
-                  <input {...getCustomerInput()} />
-                  <UploadCloud className={`mb-3 sm:mb-4 shrink-0 ${customerFile ? 'text-success' : 'text-secondary'}`} size={28} />
-                  <p className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-1 truncate max-w-full px-2">
-                    {customerFile ? 'Customers Selected' : 'Customers CSV'}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-secondary italic truncate max-w-full px-2">
-                    {customerFile ? customerFile.name : 'Drop file or click to browse'}
-                  </p>
-                </div>
-
-                <div 
-                  {...getOrderProps()} 
-                  className={`p-6 sm:p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] ${
-                    isOrderActive ? 'border-accent bg-accent/5' : orderFile ? 'border-success bg-success/5' : 'border-border hover:border-accent'
-                  }`}
-                >
-                  <input {...getOrderInput()} />
-                  <UploadCloud className={`mb-3 sm:mb-4 shrink-0 ${orderFile ? 'text-success' : 'text-secondary'}`} size={28} />
-                  <p className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-1 truncate max-w-full px-2">
-                    {orderFile ? 'Orders Selected' : 'Orders CSV'}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-secondary italic truncate max-w-full px-2">
-                    {orderFile ? orderFile.name : 'Drop file or click to browse'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {state === 'error' && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-[11px] sm:text-sm font-medium"
+        <div className="bg-white p-6 sm:p-10 rounded-2xl sm:rounded-3xl border border-border shadow-xl overflow-hidden">
+          <AnimatePresence mode="wait">
+            {state === 'login' ? (
+              <motion.div
+                key="login-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6 sm:space-y-8"
               >
-                {errorMessage}
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-4xl font-black mb-3 sm:mb-4 uppercase">Access Workspace</h1>
+                  <p className="text-sm sm:text-base text-secondary leading-relaxed">
+                    Connect to your existing intelligence dashboard using your Brand Name and Brand ID.
+                  </p>
+                </div>
+
+                <form onSubmit={handleLoginSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Brand Name *</label>
+                    <input 
+                      type="text" 
+                      value={loginBrandName}
+                      onChange={(e) => setLoginBrandName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
+                      placeholder="e.g. Acme Corp"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Brand ID *</label>
+                    <input 
+                      type="text" 
+                      value={loginBrandId}
+                      onChange={(e) => setLoginBrandId(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-sm sm:text-base tracking-wide uppercase"
+                      placeholder="e.g. BRND-XXXXXX"
+                      required
+                    />
+                  </div>
+
+                  {loginError && (
+                    <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-[11px] sm:text-sm font-medium">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4 pt-2">
+                    <button 
+                      type="submit"
+                      className="w-full bg-foreground text-white py-4 rounded-xl font-black text-sm sm:text-lg uppercase tracking-widest hover:bg-accent transition-all shadow-lg shadow-black/5"
+                    >
+                      Connect Dashboard
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setLoginError('');
+                        setState('form');
+                      }}
+                      className="text-xs font-bold uppercase tracking-widest text-secondary hover:text-foreground transition-colors py-2 flex items-center justify-center gap-1.5"
+                    >
+                      ← Create New Workspace
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="setup-form"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6 sm:space-y-8"
+              >
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-4xl font-black mb-3 sm:mb-4 uppercase truncate sm:whitespace-normal">Setup Brand</h1>
+                  <p className="text-sm sm:text-base text-secondary leading-relaxed">
+                    Create your intelligence workspace by uploading your customer and transaction history.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Brand Name *</label>
+                      <input 
+                        type="text" 
+                        value={brandName}
+                        onChange={(e) => setBrandName(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
+                        placeholder="e.g. Acme Corp"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Industry</label>
+                      <input 
+                        type="text" 
+                        value={industry}
+                        onChange={(e) => setIndustry(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-medium text-sm sm:text-base"
+                        placeholder="e.g. Retail"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-secondary">Data Ingestion *</label>
+                    
+                    <div className="flex gap-3 items-start p-4 bg-secondary/5 border border-secondary/10 rounded-2xl text-secondary">
+                      <Info size={16} className="shrink-0 mt-0.5 text-accent" />
+                      <div className="space-y-1">
+                        <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase text-foreground">
+                          Schema Requirement Notice
+                        </p>
+                        <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
+                          Please ensure your uploaded CSV files exactly match the expected schema columns and headers. Any deviation will result in database ingestion failure.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div 
+                        {...getCustomerProps()} 
+                        className={`p-6 sm:p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] ${
+                          isCustomerActive ? 'border-accent bg-accent/5' : customerFile ? 'border-success bg-success/5' : 'border-border hover:border-accent'
+                        }`}
+                      >
+                        <input {...getCustomerInput()} />
+                        <UploadCloud className={`mb-3 sm:mb-4 shrink-0 ${customerFile ? 'text-success' : 'text-secondary'}`} size={28} />
+                        <p className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-1 truncate max-w-full px-2">
+                          {customerFile ? 'Customers Selected' : 'Customers CSV'}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-secondary italic truncate max-w-full px-2">
+                          {customerFile ? customerFile.name : 'Drop file or click to browse'}
+                        </p>
+                      </div>
+
+                      <div 
+                        {...getOrderProps()} 
+                        className={`p-6 sm:p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] ${
+                          isOrderActive ? 'border-accent bg-accent/5' : orderFile ? 'border-success bg-success/5' : 'border-border hover:border-accent'
+                        }`}
+                      >
+                        <input {...getOrderInput()} />
+                        <UploadCloud className={`mb-3 sm:mb-4 shrink-0 ${orderFile ? 'text-success' : 'text-secondary'}`} size={28} />
+                        <p className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-1 truncate max-w-full px-2">
+                          {orderFile ? 'Orders Selected' : 'Orders CSV'}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-secondary italic truncate max-w-full px-2">
+                          {orderFile ? orderFile.name : 'Drop file or click to browse'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {state === 'error' && (
+                    <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-[11px] sm:text-sm font-medium">
+                      {errorMessage}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4">
+                    <button 
+                      type="submit"
+                      className="w-full bg-foreground text-white py-4 rounded-xl font-black text-sm sm:text-lg uppercase tracking-widest hover:bg-accent transition-all shadow-lg shadow-black/5"
+                    >
+                      Build Workspace
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={loadDemoData}
+                      className="w-full bg-accent/10 text-accent border border-accent/20 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-accent hover:text-white transition-all flex items-center justify-center gap-2"
+                    >
+                      <Sparkles size={14} /> Quick Start: Load Demo Data
+                    </button>
+                  </div>
+
+                  <div className="text-center pt-4 border-t border-border mt-6">
+                    <p className="text-xs text-secondary font-medium">
+                      Already created a dashboard?{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginError('');
+                          setState('login');
+                        }}
+                        className="text-accent hover:underline font-bold"
+                      >
+                        Access Workspace
+                      </button>
+                    </p>
+                  </div>
+                </form>
               </motion.div>
             )}
-
-            <div className="flex flex-col gap-4">
-              <button 
-                type="submit"
-                className="w-full bg-foreground text-white py-4 rounded-xl font-black text-sm sm:text-lg uppercase tracking-widest hover:bg-accent transition-all shadow-lg shadow-black/5"
-              >
-                Build Workspace
-              </button>
-
-              <button 
-                type="button"
-                onClick={loadDemoData}
-                className="w-full bg-accent/10 text-accent border border-accent/20 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-accent hover:text-white transition-all flex items-center justify-center gap-2"
-              >
-                <Sparkles size={14} /> Quick Start: Load Demo Data
-              </button>
-            </div>
-          </form>
+          </AnimatePresence>
         </div>
       </div>
     </div>
