@@ -1,9 +1,9 @@
 const express = require("express");
 const { query } = require("../config/db");
 const {
-  regenerateMetrics,
   getMetricsJobHistory,
 } = require("../services/analytics/metrics-generator");
+const queueManager = require("../services/analytics/queue-manager");
 const { getHealthMatrix, getValuePyramid } = require("../controllers/metrics-controller");
 
 const router = express.Router();
@@ -25,7 +25,7 @@ router.post("/rebuild", async (req, res) => {
       return res.status(404).json({ error: "brand_id was not found" });
     }
 
-    const result = await regenerateMetrics(brand_id);
+    const result = await queueManager.queueJob(brand_id);
 
     res.json({
       status: "success",
@@ -37,6 +37,26 @@ router.post("/rebuild", async (req, res) => {
       error: error.message,
       status: "failed",
     });
+  }
+});
+
+router.get("/jobs/:jobId", async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const result = await query(
+      "SELECT * FROM metrics_generation_jobs WHERE id = $1",
+      [jobId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    res.json({
+      status: "success",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error fetching job status:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

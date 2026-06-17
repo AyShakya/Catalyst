@@ -243,3 +243,21 @@ export const getCampaignActivity = async (campaignId: string): Promise<ApiRespon
   const response = await axios.get(`${API_URL}/campaigns/${campaignId}/activity`);
   return response.data;
 };
+
+export const getMetricsJobStatus = async (jobId: string): Promise<ApiResponse<any>> => {
+  const response = await axios.get(`${API_URL}/metrics/jobs/${jobId}`);
+  return response.data;
+};
+
+export const getMetricsJobHistory = async (brandId: string, limit: number = 10): Promise<ApiResponse<any[]>> => {
+  const response = await axios.get(`${API_URL}/metrics/history/${brandId}?limit=${limit}`);
+  return response.data;
+};
+
+export const triggerMetricsRebuild = async (brandId: string): Promise<ApiResponse<any>> => {
+  const response = await axios.post(`${API_URL}/metrics/rebuild`, { brand_id: brandId });
+  return response.data;
+};
+
+
+

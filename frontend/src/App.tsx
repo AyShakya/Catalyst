@@ -1,12 +1,14 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import WorkspaceLayout from './components/layout/WorkspaceLayout';
 import BackgroundEffect from './components/layout/BackgroundEffect';
 import { Skeleton } from './components/layout/Skeleton';
 import './styles/App.css';
+import Lenis from 'lenis';
 
 import { WorkspaceProvider } from './context/WorkspaceContext';
+import { ToastProvider } from './context/ToastContext';
 
 // Lazy load pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -19,20 +21,40 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const DocxPage = lazy(() => import('./pages/DocxPage'));
 
 function App() {
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    });
+
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
+  }, []);
+
   return (
     <Router>
-      <WorkspaceProvider>
-        <div className="app-container relative min-h-screen">
-          <BackgroundEffect />
-          <div className="relative z-10">
-            <Navbar />
-            <Suspense fallback={
-              <div className="flex items-center justify-center h-[80vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
-              </div>
-            }>
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
+      <ToastProvider>
+        <WorkspaceProvider>
+          <div className="app-container relative min-h-screen">
+            <BackgroundEffect />
+            <div className="relative z-10">
+              <Navbar />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-[80vh]">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+                </div>
+              }>
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
                 <Route path="/setup" element={<BrandSetupPage />} />
                 <Route path="/docx" element={<DocxPage />} />
 
@@ -44,7 +66,6 @@ function App() {
                   <Route path="campaigns" element={<CampaignsPage />} />
                   <Route path="campaigns/:id" element={<CampaignDetailsPage />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
-                  <Route path="docx" element={<DocxPage />} />
                 </Route>
 
                 {/* Fallback legacy routes without brandId */}
@@ -55,13 +76,13 @@ function App() {
                   <Route path="campaigns" element={<CampaignsPage />} />
                   <Route path="campaigns/:id" element={<CampaignDetailsPage />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
-                  <Route path="docx" element={<DocxPage />} />
                 </Route>
               </Routes>
             </Suspense>
           </div>
         </div>
       </WorkspaceProvider>
+      </ToastProvider>
     </Router>
   );
 }

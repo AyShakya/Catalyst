@@ -32,6 +32,9 @@ const RevenueDonut: React.FC<RevenueDonutProps> = React.memo(({ data }) => {
             paddingAngle={5}
             dataKey="count"
             nameKey="label"
+            isAnimationActive={true}
+            animationDuration={1500}
+            animationEasing="ease-out"
           >
             {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />

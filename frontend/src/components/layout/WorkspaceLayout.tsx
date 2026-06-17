@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Send, BarChart2, LogOut, BookOpen } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import Lenis from 'lenis';
 
 const SidebarLink = ({ to, icon: Icon, children }: { to: string, icon: any, children: React.ReactNode }) => (
   <NavLink 
@@ -24,6 +25,31 @@ const WorkspaceLayout: React.FC = () => {
   const { brandId: urlBrandId } = useParams();
   const { brands, activeBrand, loading } = useWorkspace();
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+
+    const lenis = new Lenis({
+      wrapper: scrollRef.current,
+      content: scrollRef.current,
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    });
+
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
+  }, []);
+
   // Redirect legacy /workspace/... paths to include the activeBrand.id
   React.useEffect(() => {
     if (loading) return;
@@ -38,7 +64,7 @@ const WorkspaceLayout: React.FC = () => {
     const pathParts = location.pathname.split('/').filter(Boolean);
     if (pathParts[0] === 'workspace') {
       const secondPart = pathParts[1];
-      const legacyRoutes = ['overview', 'strategist', 'campaigns', 'analytics', 'docx'];
+      const legacyRoutes = ['overview', 'strategist', 'campaigns', 'analytics'];
       
       // If the brand ID is missing (either pathname is exactly /workspace or contains a legacy route tab next)
       if (!secondPart || legacyRoutes.includes(secondPart)) {
@@ -60,6 +86,21 @@ const WorkspaceLayout: React.FC = () => {
     const currentTab = pathParts.length > 2 ? pathParts.slice(2).join('/') : 'overview';
     navigate(`/workspace/${newBrandId}/${currentTab}`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-card-bg/25">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent text-accent"></div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary animate-pulse">Initializing Workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeBrand && brands.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-transparent overflow-hidden">
@@ -117,7 +158,6 @@ const WorkspaceLayout: React.FC = () => {
           <SidebarLink to={`/workspace/${activeBrand?.id || ''}/strategist`} icon={MessageSquare}>Strategist</SidebarLink>
           <SidebarLink to={`/workspace/${activeBrand?.id || ''}/campaigns`} icon={Send}>Campaigns</SidebarLink>
           <SidebarLink to={`/workspace/${activeBrand?.id || ''}/analytics`} icon={BarChart2}>Analytics</SidebarLink>
-          <SidebarLink to={`/workspace/${activeBrand?.id || ''}/docx`} icon={BookOpen}>Docx</SidebarLink>
         </nav>
 
         <div className="hidden lg:block pt-6 border-t border-border mt-auto">
@@ -132,7 +172,7 @@ const WorkspaceLayout: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-y-auto bg-transparent relative">
+      <main ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto bg-transparent relative">
         <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-7xl mx-auto w-full">
           <React.Suspense fallback={
             <div className="flex items-center justify-center h-[50vh]">

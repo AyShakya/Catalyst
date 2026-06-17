@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithStrategist, chatWithStrategistStream, launchStrategistCampaign, getStrategistSession, executeCampaign, closeSession, getActiveSessions } from '../services/brandService';
 import { Skeleton } from '../components/layout/Skeleton';
 import { CampaignDraft } from '../types/intelligence';
+import { useToast } from '../context/ToastContext';
 
 type Message = {
   role: 'USER' | 'ASSISTANT';
@@ -33,12 +34,35 @@ const ThinkingDots = () => (
   </div>
 );
 
+interface MessageItemProps {
+  msg: Message;
+}
+
+const MessageItem = React.memo(({ msg }: MessageItemProps) => {
+  return (
+    <div className={`max-w-[95%] sm:max-w-[85%] flex gap-2 sm:gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
+        msg.role === 'USER' ? 'bg-card-bg border border-border text-secondary' : 'bg-accent text-white'
+      }`}>
+        {msg.role === 'USER' ? <User size={14} /> : <Bot size={14} />}
+      </div>
+      <div className={`p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed break-words overflow-hidden ${
+        msg.role === 'USER' ? 'bg-foreground text-white' : 'bg-card-bg border border-border text-foreground font-medium'
+      }`}>
+        {msg.content || <ThinkingDots />}
+      </div>
+    </div>
+  );
+});
+MessageItem.displayName = 'MessageItem';
+
 const StrategistPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { brandId: routeBrandId } = useParams();
   const { activeBrand } = useWorkspace();
   const brandId = routeBrandId || activeBrand?.id;
+  const { showToast } = useToast();
 
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -54,6 +78,7 @@ const StrategistPage: React.FC = () => {
   const [isBuildingCampaign, setIsBuildingCampaign] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const streamingAssistantIndexRef = useRef<number | null>(null);
   const navigatedSessionIdRef = useRef<string | null>(null);
   
@@ -105,9 +130,27 @@ const StrategistPage: React.FC = () => {
     return () => controller.abort();
   }, [brandId, location.search, sessionId, navigate]);
 
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 150;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+    setShowScrollBottom(!atBottom);
+  };
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    const threshold = 150;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+    
+    const lastMessage = messages[messages.length - 1];
+    const justSent = lastMessage?.role === 'USER';
+    
+    if (isAtBottom || justSent) {
+      el.scrollTop = el.scrollHeight;
+      setShowScrollBottom(false);
     }
   }, [messages]);
 
@@ -350,6 +393,7 @@ const StrategistPage: React.FC = () => {
         setStatus('LAUNCHED');
         setCampaignId(res.data.campaignId);
         setShowConfirmModal(false);
+        showToast('Campaign successfully built and launched via Catalyst dispatch loop!', 'success');
         // Clear active session state from the list immediately
         setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
         // Redirect to campaigns page to monitor progress
@@ -359,6 +403,7 @@ const StrategistPage: React.FC = () => {
       console.error(err);
       const msg = err.response?.data?.error || err.response?.data?.details || err.message || "Failed to launch campaign.";
       setLaunchError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsLaunching(false);
     }
@@ -409,7 +454,7 @@ const StrategistPage: React.FC = () => {
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 scrollbar-hide">
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 scrollbar-hide">
           <AnimatePresence initial={false}>
             {!sessionId && activeSessions.length > 0 && messages.length === 0 && (
               <motion.div 
@@ -512,18 +557,7 @@ const StrategistPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[95%] sm:max-w-[85%] flex gap-2 sm:gap-4 ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    msg.role === 'USER' ? 'bg-card-bg border border-border text-secondary' : 'bg-accent text-white'
-                  }`}>
-                    {msg.role === 'USER' ? <User size={14} className="sm:size-16" /> : <Bot size={14} className="sm:size-16" />}
-                  </div>
-                  <div className={`p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed break-words overflow-hidden ${
-                    msg.role === 'USER' ? 'bg-foreground text-white' : 'bg-card-bg border border-border text-foreground font-medium'
-                  }`}>
-                    {msg.content || <ThinkingDots />}
-                  </div>
-                </div>
+                <MessageItem msg={msg} />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -556,6 +590,26 @@ const StrategistPage: React.FC = () => {
             </button>
           </div>
         </div>
+        
+        <AnimatePresence>
+          {showScrollBottom && (
+            <motion.button
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              onClick={() => {
+                const el = scrollRef.current;
+                if (el) {
+                  el.scrollTop = el.scrollHeight;
+                  setShowScrollBottom(false);
+                }
+              }}
+              className="absolute bottom-24 right-6 z-20 flex items-center gap-1.5 px-3.5 py-2 bg-foreground hover:bg-foreground/90 active:scale-95 text-white border border-border/10 rounded-full shadow-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all pointer-events-auto cursor-pointer"
+            >
+              <ChevronRight className="rotate-90 text-white shrink-0" size={12} /> Scroll to Bottom
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Right Strategy Snapshot */}

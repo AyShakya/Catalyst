@@ -71,7 +71,7 @@ const CustomerHealthMatrix: React.FC<CustomerHealthMatrixProps> = React.memo(({ 
           <ReferenceLine x={50} stroke="#e2e8f0" strokeDasharray="5 5" />
           <ReferenceLine y={50} stroke="#e2e8f0" strokeDasharray="5 5" />
 
-          <Scatter name="Customers" data={data}>
+          <Scatter name="Customers" data={data} isAnimationActive={data.length < 200} animationDuration={1500}>
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={getPointColor(entry)} fillOpacity={0.6} strokeWidth={1} stroke={getPointColor(entry)} />
             ))}

@@ -177,12 +177,23 @@ async function recordEvent(messageId, channelMessageId, communicationId, eventTy
 }
 
 function simulateLifecycle(messageId, channelMessageId, communicationId) {
+  // Helper to run async code inside setTimeout safely
+  const runStep = (fn) => {
+    return async () => {
+      try {
+        await fn();
+      } catch (err) {
+        console.error(`[Simulation Error] message ${channelMessageId}:`, err);
+      }
+    };
+  };
+
   // 1. QUEUED -> SENT
-  setTimeout(async () => {
+  setTimeout(runStep(async () => {
     await recordEvent(messageId, channelMessageId, communicationId, "SENT");
 
     // 2. SENT -> DELIVERED or FAILED
-    setTimeout(async () => {
+    setTimeout(runStep(async () => {
       const isDelivered = Math.random() < SIMULATION_PROBABILITIES.DELIVERED;
       if (!isDelivered) {
         await recordEvent(messageId, channelMessageId, communicationId, "FAILED");
@@ -192,27 +203,27 @@ function simulateLifecycle(messageId, channelMessageId, communicationId) {
       await recordEvent(messageId, channelMessageId, communicationId, "DELIVERED");
 
       // 3. DELIVERED -> OPENED?
-      setTimeout(async () => {
+      setTimeout(runStep(async () => {
         if (Math.random() > SIMULATION_PROBABILITIES.OPENED) return;
         await recordEvent(messageId, channelMessageId, communicationId, "OPENED");
 
         // 4. OPENED -> CLICKED?
-        setTimeout(async () => {
+        setTimeout(runStep(async () => {
           if (Math.random() > SIMULATION_PROBABILITIES.CLICKED) return;
           await recordEvent(messageId, channelMessageId, communicationId, "CLICKED");
 
           // 5. CLICKED -> PURCHASED?
-          setTimeout(async () => {
+          setTimeout(runStep(async () => {
             if (Math.random() > SIMULATION_PROBABILITIES.PURCHASED) return;
             await recordEvent(messageId, channelMessageId, communicationId, "PURCHASED");
-          }, EVENT_DELAYS.PURCHASED);
-        }, EVENT_DELAYS.CLICKED);
-      }, EVENT_DELAYS.OPENED);
-    }, EVENT_DELAYS.DELIVERED);
-  }, EVENT_DELAYS.SENT);
+          }), EVENT_DELAYS.PURCHASED);
+        }), EVENT_DELAYS.CLICKED);
+      }), EVENT_DELAYS.OPENED);
+    }), EVENT_DELAYS.DELIVERED);
+  }), EVENT_DELAYS.SENT);
 }
 
-app.post("/messages/send-batch", (req, res) => {
+app.post("/messages/send-batch", async (req, res) => {
   const { messages } = req.body;
   
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -223,54 +234,100 @@ app.post("/messages/send-batch", (req, res) => {
 
   const results = [];
   
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
-    
-    const stmt = db.prepare(`
-      INSERT INTO channel_messages 
-      (channel_message_id, communication_id, campaign_id, customer_id, channel, recipient, message, status) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const msg of messages) {
-      const { communicationId, campaignId, customerId, channel, recipient, message } = msg;
-      if (!communicationId || !recipient || !channel) {
-        results.push({ communicationId, error: "Missing required fields", accepted: false });
-        continue;
-      }
-      const channelMessageId = `msg_${crypto.randomBytes(4).toString("hex")}`;
-      
-      stmt.run(
-        [channelMessageId, communicationId, campaignId, customerId, channel, recipient, message, "QUEUED"],
-        function(err) {
+  // Create a function that executes the transaction step-by-step using Promises
+  const runTransaction = () => {
+    return new Promise((resolve, reject) => {
+      db.serialize(() => {
+        db.run("BEGIN TRANSACTION", (err) => {
+          if (err) return reject(err);
+        });
+        
+        const stmt = db.prepare(`
+          INSERT INTO channel_messages 
+          (channel_message_id, communication_id, campaign_id, customer_id, channel, recipient, message, status) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, (err) => {
           if (err) {
-            console.error("[Channel Service] Batch item database error:", err);
-            results.push({ communicationId, error: "Database error", accepted: false });
-          } else {
-            const messageId = this.lastID;
-            results.push({ communicationId, accepted: true, channelMessageId });
-            
-            // Start simulation for this message
-            simulateLifecycle(messageId, channelMessageId, communicationId);
+            db.run("ROLLBACK");
+            return reject(err);
           }
+        });
+
+        let pendingCount = 0;
+        let hasError = false;
+
+        const checkFinished = () => {
+          if (pendingCount === 0) {
+            stmt.finalize((err) => {
+              if (err) {
+                db.run("ROLLBACK");
+                return reject(err);
+              }
+              
+              if (hasError) {
+                db.run("ROLLBACK", () => {
+                  resolve(results); // Send results even if rolled back
+                });
+              } else {
+                db.run("COMMIT", (commitErr) => {
+                  if (commitErr) {
+                    db.run("ROLLBACK");
+                    return reject(commitErr);
+                  }
+                  resolve(results);
+                });
+              }
+            });
+          }
+        };
+
+        for (const msg of messages) {
+          const { communicationId, campaignId, customerId, channel, recipient, message } = msg;
+          if (!communicationId || !recipient || !channel) {
+            results.push({ communicationId, error: "Missing required fields", accepted: false });
+            continue;
+          }
+          const channelMessageId = `msg_${crypto.randomBytes(4).toString("hex")}`;
+          
+          pendingCount++;
+          stmt.run(
+            [channelMessageId, communicationId, campaignId, customerId, channel, recipient, message, "QUEUED"],
+            function(err) {
+              pendingCount--;
+              if (err) {
+                console.error("[Channel Service] Batch item database error:", err);
+                results.push({ communicationId, error: "Database error", accepted: false });
+                hasError = true;
+              } else {
+                const messageId = this.lastID;
+                results.push({ communicationId, accepted: true, channelMessageId });
+                
+                // Start simulation for this message
+                simulateLifecycle(messageId, channelMessageId, communicationId);
+              }
+              checkFinished();
+            }
+          );
         }
-      );
-    }
-    
-    stmt.finalize();
-    
-    db.run("COMMIT", (err) => {
-      if (err) {
-        console.error("[Channel Service] Transaction COMMIT error:", err);
-        db.run("ROLLBACK");
-        return res.status(500).json({ error: "Failed to save batch" });
-      }
-      res.json({
-        status: "success",
-        results
+
+        // Handle case where all items are skipped
+        if (pendingCount === 0) {
+          checkFinished();
+        }
       });
     });
-  });
+  };
+
+  try {
+    const finalResults = await runTransaction();
+    res.json({
+      status: "success",
+      results: finalResults
+    });
+  } catch (err) {
+    console.error("[Channel Service] Batch processing transaction error:", err);
+    res.status(500).json({ error: "Failed to process batch transaction" });
+  }
 });
 
 app.post("/messages/send", (req, res) => {

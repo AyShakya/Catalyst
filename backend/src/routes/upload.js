@@ -3,7 +3,7 @@ const { getClient } = require("../config/db");
 const { parseCSV } = require("../utils/csv-parser");
 const { ingestCustomers } = require("../services/upload/customer-ingestion");
 const { ingestOrders } = require("../services/upload/order-ingestion");
-const { regenerateMetrics } = require("../services/analytics/metrics-generator");
+const queueManager = require("../services/analytics/queue-manager");
 
 const router = express.Router();
 
@@ -57,9 +57,13 @@ router.post("/", async (req, res) => {
       results.orders = await ingestOrders(orderRecords, brandId, client);
     }
 
-    results.metrics = await regenerateMetrics(brandId, client);
-
     await client.query("COMMIT");
+    client.release();
+    client = null;
+
+    // Queue the metrics regeneration in the background
+    const job = await queueManager.queueJob(brandId);
+    results.metrics = { job_id: job.id, status: job.status };
 
     res.json({
       status: "success",

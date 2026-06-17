@@ -55,8 +55,8 @@ const ForecastComparison: React.FC<ForecastComparisonProps> = React.memo(({ fore
             iconSize={8}
             wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
           />
-          <Bar dataKey="Forecast" fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={32} />
-          <Bar dataKey="Actual" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={32} />
+          <Bar dataKey="Forecast" fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={32} isAnimationActive={true} animationDuration={1500} animationEasing="ease-out" />
+          <Bar dataKey="Actual" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={32} isAnimationActive={true} animationDuration={1500} animationEasing="ease-out" />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -1,4 +1,6 @@
 import React from 'react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
+
 
 interface SkeletonProps {
   className?: string;
@@ -171,3 +173,32 @@ export const ComparisonSkeleton = () => (
     </div>
   </div>
 );
+
+interface ErrorRetryPanelProps {
+  message?: string;
+  onRetry: () => void;
+  className?: string;
+}
+
+export const ErrorRetryPanel: React.FC<ErrorRetryPanelProps> = ({ 
+  message = "Failed to sync connection with Catalyst Intelligence.", 
+  onRetry, 
+  className = '' 
+}) => {
+  return (
+    <div className={`flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-border bg-card-bg/25 backdrop-blur-sm min-h-[250px] w-full ${className}`}>
+      <div className="p-3.5 rounded-2xl bg-error/10 text-error mb-4 shrink-0 shadow-sm">
+        <AlertCircle size={24} />
+      </div>
+      <h3 className="text-xs font-black uppercase tracking-widest text-foreground mb-2">Sync Connection Interrupted</h3>
+      <p className="text-xs text-secondary font-medium mb-6 max-w-sm leading-relaxed">{message}</p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/90 active:scale-95 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md shadow-accent/15"
+      >
+        <RotateCcw size={14} /> Retry Connection
+      </button>
+    </div>
+  );
+};
+

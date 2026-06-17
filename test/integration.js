@@ -14,12 +14,27 @@ async function testIntegration() {
     const customerCsv = Buffer.from("external_customer_id,name,email,phone,city,state,country\nEXT_001,John Doe,john@example.com,+919999999999,Mumbai,MH,IN").toString("base64");
     const orderCsv = Buffer.from("external_customer_id,external_order_id,amount,currency,order_date,status\nEXT_001,ORD_001,1000,INR,2026-06-12,COMPLETED").toString("base64");
     
-    await axios.post(`${BACKEND_URL}/upload`, {
+    const uploadRes = await axios.post(`${BACKEND_URL}/upload`, {
       brand_id: brandId,
       customer_csv: customerCsv,
       order_csv: orderCsv
     });
-    console.log("Data uploaded and metrics generated.");
+    console.log("Data uploaded. Waiting for background metrics queue...");
+
+    const jobId = uploadRes.data.data.metrics.job_id;
+    if (jobId) {
+      let isCompleted = false;
+      while (!isCompleted) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const jobStatus = await axios.get(`${BACKEND_URL}/metrics/jobs/${jobId}`);
+        if (jobStatus.data.data.status === 'COMPLETED') {
+          isCompleted = true;
+        } else if (jobStatus.data.data.status === 'FAILED') {
+          throw new Error(`Background metrics generation failed: ${jobStatus.data.data.error_message}`);
+        }
+      }
+    }
+    console.log("Data uploaded and metrics generated asynchronously.");
 
     console.log("3. Proposing Campaign...");
     const proposalRes = await axios.post(`${BACKEND_URL}/campaigns/propose`, {

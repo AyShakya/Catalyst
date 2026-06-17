@@ -19,7 +19,7 @@ async function getHealthMatrix(req, res) {
       FROM customer_metrics cm
       INNER JOIN customers c ON cm.customer_id = c.id
       WHERE c.brand_id = $1
-      ORDER BY RANDOM()
+      ORDER BY cm.customer_id
       LIMIT $2
     `;
 

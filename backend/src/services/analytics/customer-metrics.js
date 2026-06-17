@@ -7,6 +7,21 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
       FROM customers
       WHERE brand_id = $1
     ),
+    order_gaps AS (
+      SELECT
+        o.customer_id,
+        o.order_date - LAG(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) AS gap
+      FROM orders o
+      JOIN customer_base cb ON cb.customer_id = o.customer_id
+      WHERE o.order_date IS NOT NULL
+    ),
+    avg_gaps AS (
+      SELECT
+        customer_id,
+        AVG(gap)::NUMERIC AS avg_days_between_orders
+      FROM order_gaps
+      GROUP BY customer_id
+    ),
     order_stats AS (
       SELECT
         cb.customer_id,
@@ -25,23 +40,21 @@ async function calculateCustomerMetrics(brandId, db = { query }) {
     ),
     gaps_calculation AS (
       SELECT
-        customer_id,
-        total_orders,
-        total_spend,
-        avg_order_value,
-        highest_order_value,
-        lowest_order_value,
-        first_purchase_date,
-        last_purchase_date,
+        os.customer_id,
+        os.total_orders,
+        os.total_spend,
+        os.avg_order_value,
+        os.highest_order_value,
+        os.lowest_order_value,
+        os.first_purchase_date,
+        os.last_purchase_date,
         CASE
-          WHEN last_purchase_date IS NULL THEN NULL
-          ELSE (CURRENT_DATE - last_purchase_date)::INTEGER
+          WHEN os.last_purchase_date IS NULL THEN NULL
+          ELSE (CURRENT_DATE - os.last_purchase_date)::INTEGER
         END as days_since_last_purchase,
-        CASE
-          WHEN total_orders <= 1 THEN NULL
-          ELSE (last_purchase_date - first_purchase_date)::NUMERIC / (total_orders - 1)
-        END as avg_days_between_orders
-      FROM order_stats
+        ag.avg_days_between_orders
+      FROM order_stats os
+      LEFT JOIN avg_gaps ag ON ag.customer_id = os.customer_id
     ),
     frequency_calculation AS (
       SELECT

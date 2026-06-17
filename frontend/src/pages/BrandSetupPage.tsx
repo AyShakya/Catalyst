@@ -3,15 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle, Info, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createBrand, uploadData } from '../services/brandService';
+import { createBrand, uploadData, getMetricsJobStatus } from '../services/brandService';
 import { fileToBase64 } from '../utils/fileUtils';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useToast } from '../context/ToastContext';
 
 type SetupState = 'form' | 'processing' | 'error';
 
 const BrandSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { refreshBrands } = useWorkspace();
+  const { showToast } = useToast();
   const [state, setState] = useState<SetupState>('form');
   const [brandName, setBrandName] = useState('');
   const [industry, setIndustry] = useState('');
@@ -674,28 +676,51 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
     }
 
     setState('processing');
+    setCurrentStep(0);
     
     try {
       // 1. Create Brand
       const brand = await createBrand(brandName, industry);
       
-      // Progress simulation start
-      const interval = setInterval(() => {
-        setCurrentStep(prev => (prev < steps.length - 1 ? prev + 1 : prev));
-      }, 1500);
-
       // 2. Convert to Base64
+      setCurrentStep(1);
       const customerBase64 = await fileToBase64(customerFile);
       const orderBase64 = await fileToBase64(orderFile);
 
-      // 3. Upload Data
-      await uploadData(brand.id, customerBase64, orderBase64);
+      // 3. Upload Data (ingests files + commits to SQLite/Postgres)
+      setCurrentStep(2);
+      const uploadRes = await uploadData(brand.id, customerBase64, orderBase64);
+      
+      const jobId = uploadRes.data?.metrics?.job_id;
+      if (!jobId) {
+        throw new Error("Ingestion succeeded but background metrics job queue reference was missing.");
+      }
 
       // Store brand ID for workspace
       localStorage.setItem('catalyst_brand_id', brand.id);
       
-      clearInterval(interval);
-      setCurrentStep(steps.length - 1);
+      // 4. Poll actual background job status
+      let isCompleted = false;
+      while (!isCompleted) {
+        // Wait 1.5 seconds between status polls
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const jobStatusRes = await getMetricsJobStatus(jobId);
+        
+        if (jobStatusRes.status === 'success' && jobStatusRes.data) {
+          const job = jobStatusRes.data;
+          
+          if (job.status === 'RUNNING') {
+            setCurrentStep(3); // Building Business Insights
+          } else if (job.status === 'COMPLETED') {
+            setCurrentStep(4); // Preparing Workspace
+            isCompleted = true;
+          } else if (job.status === 'FAILED') {
+            throw new Error(job.error_message || "Background database metrics generation task failed.");
+          }
+        }
+      }
+
+      showToast('Workspace initialized and customer data uploaded successfully!', 'success');
       
       // Final delay for UX
       setTimeout(async () => {
@@ -706,7 +731,9 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
     } catch (err: any) {
       console.error(err);
       setState('error');
-      setErrorMessage(err.response?.data?.error || 'An error occurred during setup. Please try again.');
+      const errorMsg = err.response?.data?.error || err.message || 'An error occurred during setup. Please try again.';
+      setErrorMessage(errorMsg);
+      showToast(errorMsg, 'error');
     }
   };
 
