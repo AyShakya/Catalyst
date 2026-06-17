@@ -47,30 +47,34 @@ Catalyst leverages a structured relational database with robust indexes, foreign
 
 ## 🧮 Mathematical & Statistical Core Models
 
-Catalyst replaces arbitrary heuristics with solid mathematical and window-based SQL metrics compiled natively inside PostgreSQL using Common Table Expressions (CTEs).
+Catalyst replaces arbitrary heuristics with solid mathematical and window-based SQL metrics compiled natively inside PostgreSQL using Common Table Expressions (CTEs). To prevent markdown rendering conflicts on platforms like GitHub, all variable names are written using clean spacing inside text blocks rather than raw underscores.
 
 ### 1. Inter-Purchase Interval & Order Gaps
 To track customer order patterns, Catalyst computes the delta between successive transactions per customer:
-$$\text{gap} = \text{order\_date} - \text{LAG}(\text{order\_date}) \text{ OVER } (\text{PARTITION BY } \text{customer\_id} \text{ ORDER BY } \text{order\_date})$$
+
+$$\text{gap} = \text{order date} - \text{LAG}(\text{order date}) \text{ OVER (PARTITION BY customer id ORDER BY order date)}$$
 
 The average gap interval is calculated per customer as:
-$$\text{avg\_days\_between\_orders} = \frac{1}{N - 1} \sum_{i=1}^{N-1} \text{gap}_i$$
+
+$$\text{avg days between orders} = \frac{1}{N - 1} \sum_{i=1}^{N - 1} \text{gap}_i$$
 
 ### 2. Weighted Loyalty Score
 The loyalty score ($L \in [0, 100]$) assesses a customer's strength across Spend, Frequency, and Recency:
+
 $$L = w_1 \cdot S_{\text{rank}} + w_2 \cdot F_{\text{score}} + w_3 \cdot R_{\text{score}}$$
 
 Where:
-- **Spend Rank ($S_{\text{rank}}$ - 40% Weight)**: Customer's position relative to the brand's percentile ranks ($p_0$ to $p_{100}$ spend):
-  $$S_{\text{rank}} = \frac{\min(\text{total\_spend}, p_{100}) - p_0}{p_{100} - p_0} \times 40$$
-- **Frequency Score ($F_{\text{score}}$ - 40% Weight)**: Average monthly purchases capped at a maximum factor of 10:
-  $$F_{\text{score}} = \min(\text{purchase\_frequency}, 10) \times 4$$
-- **Recency Score ($R_{\text{score}}$ - 20% Weight)**: Measures the delay of the last order relative to the average brand gap:
-  $$R_{\text{score}} = \max\left(0, \left(1 - \min\left(\frac{\text{days\_since\_last\_purchase}}{\text{brand\_avg\_gap\_days}}, 1\right)\right) \times 20\right)$$
+*   **Spend Rank ($S_{\text{rank}}$ - 40% Weight)**: Customer's position relative to the brand's percentile ranks ($p_0$ to $p_{100}$ spend):
+    $$S_{\text{rank}} = \frac{\min(\text{total spend}, p_{100}) - p_0}{p_{100} - p_0} \times 40$$
+*   **Frequency Score ($F_{\text{score}}$ - 40% Weight)**: Average monthly purchases capped at a maximum factor of 10:
+    $$F_{\text{score}} = \min(\text{purchase frequency}, 10) \times 4$$
+*   **Recency Score ($R_{\text{score}}$ - 20% Weight)**: Measures the delay of the last order relative to the average brand gap:
+    $$R_{\text{score}} = \max\left(0, \left(1 - \min\left(\frac{\text{days since last purchase}}{\text{brand avg gap days}}, 1\right)\right) \times 20\right)$$
 
 ### 3. Predictive Churn Score
 The churn score ($C \in [0, 100]$) tracks the likelihood of customer churn by comparing the current inactivity window to their historical order frequency:
-$$C = \min\left(\left(\frac{\text{days\_since\_last\_purchase}}{\text{avg\_days\_between\_orders}}\right) \times 100, 100\right)$$
+
+$$C = \min\left(\left(\frac{\text{days since last purchase}}{\text{avg days between orders}}\right) \times 100, 100\right)$$
 
 ---
 
@@ -113,12 +117,12 @@ Instead of relying on unstable SQL generation that could expose the database to 
 
 | Metric / Boundary | Value | Technical Context |
 | :--- | :--- | :--- |
-| **Max Concurrent Upload Size** | 50 MB | Express payload body limits |
-| **Ingestion Chunk Size** | 1,000 records | Optimal database batch insert size |
+| **Max Concurrent Ingestion Scale** | 10,000 customers & 100,000 orders | Successfully parsed, linked, and analyzed in a single upload batch |
+| **Concurrent Campaigns** | 30 - 40 campaigns | Active campaign loops running concurrently under asynchronous batch processing and job queue management |
+| **Ingestion Chunk Size** | 1,000 records | Optimal database batch insert size for low lock-contention |
 | **Max Filter Limit** | 5 filters per plan | Prevents excessive JOIN overhead |
-| **Rate Limit (General)** | 100 requests / 15 mins | Production rate limiter threshold |
-| **Rate Limit (Uploads)** | 5 uploads / 10 mins | CPU/Network protective limits in production |
-| **Target Scale (Prototype)** | 10,000 customers / 100k orders | Designed for sub-minute synchronous ingestion |
+| **Rate Limit (General)** | 10,000 req / 15 mins (dev) \| 100 req / 15 mins (prod) | Protects key REST routes |
+| **Rate Limit (Uploads)** | 1,000 req / 10 mins (dev) \| 5 req / 10 mins (prod) | CPU/Network protective limits in production |
 
 ---
 
