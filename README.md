@@ -1,61 +1,130 @@
-# Catalyst - AI Marketing Strategist
+# Catalyst - AI-Native Marketing Strategist & CRM Platform
 
-## Problem
-Brands struggle to identify the right audience segments and craft personalized, high-converting campaigns across fragmented data silos. Traditional CRMs require manual segment building and repetitive message drafting, leading to slow execution and missed growth opportunities.
+Catalyst is a premium, enterprise-grade AI-native Customer Relationship Manager (CRM) and Campaign Optimization platform. By combining a high-performance raw data ingestion pipeline with an autonomous analytical layer and a conversational AI strategist, Catalyst enables marketing teams to turn raw customer transaction logs into high-converting, personalized campaigns in seconds.
 
-## Solution
-Catalyst is an AI-native CRM that empowers marketers to architect, launch, and analyze multi-channel campaigns through natural language. By integrating raw customer data with an autonomous intelligence layer, Catalyst transforms data ingestion into actionable strategy in seconds.
+---
 
-## Features
-- Chunked Bulk Data Ingestion: High-performance processing for large-scale customer and order history.
-- Autonomous Opportunity Detection: SQL-based detectors identify VIP churn, one-time buyers, and regional trends.
-- Conversational Strategy Interface: An AI-driven chat environment for campaign planning and versioning.
-- Executive Health Dashboard: Real-time visualization of business KPIs, loyalty scores, and revenue DNA.
-- Multi-Channel Dispatch: Integrated delivery system for WhatsApp, SMS, and Email campaigns.
-- Real-Time Analytics: Live tracking of delivery, open, and conversion rates with AI-modeled forecasting.
+## 🏗️ System Architecture & Data Flow
 
-## Architecture
+Catalyst separates ingestion, batch analytical computations, and generative AI orchestration to ensure sub-second UI responsiveness, absolute data safety, and robust campaign forecasting.
 
-![Architecture Flow](frontend/public/arch.png)
+```mermaid
+graph TD
+    A[Raw CSV Upload: Customers & Orders] -->|Bulk Chunked Ingestion 1000/chunk| B[PostgreSQL Base Tables]
+    B -->|Triggered Batch Calculations| C[PostgreSQL CTE Metrics Engine]
+    C -->|Aggregates CLV, Loyalty, Churn| D[customer_metrics & dataset_summary]
+    D -->|Deterministic Rules| E[Opportunity Feed: VIP Churn, One-Time Buyers]
+    D -->|Context Injection| F[AI Strategist: OpenRouter LLM]
+    F -->|Natural Language Goals| G[Filter Plan Generator]
+    G -->|Filter Validator & Compiler| H[SQL Target Audience Compiler]
+    H -->|Query Execution| I[Audience Snapshot & Revenue Forecast]
+    I -->|Interactive Session Refinement| J[Campaign Draft Versioning]
+    J -->|Campaign Approved & Launched| K[Simulated Dispatch & Events Log]
+    K -->|Conversion Telemetry| L[Real-Time Analytics Dashboard]
+```
 
-## AI Capabilities
+---
 
-### AI Audience Generation
-The system utilizes LLM workflows to translate natural language goals (e.g., "Target high-spend customers in Mumbai who are at risk of churning") into precise database filters. This eliminates the need for manual SQL or complex segment builders.
+## 🗂️ Database Schema & Data Models
 
-### AI Message Creation
-Catalyst generates personalized message templates for WhatsApp, SMS, and Email. The AI adapts the tone and content based on the campaign's specific goals and the target segment's behavior (e.g., urgency for churned users, premium tone for VIPs).
+Catalyst leverages a structured relational database with robust indexes, foreign keys with cascading deletions, and distinct constraints to maintain data integrity.
 
-### AI Campaign Recommendations
-Through the Opportunity Feed, the system proactively suggests campaign strategies based on identified business gaps. It analyzes customer lifetime value and purchase frequency to recommend specific interventions.
+### Schema Breakdown
 
-### AI Channel Recommendations
-The Campaign Intelligence service aggregates historical performance data across different goals. The AI uses this data to recommend the most effective communication channel (e.g., Email for newsletters vs. SMS for flash sales) to maximize conversion rates.
+1. **Brands (`brands`)**: The tenant base table. All customer, order, and campaign data is scoped via a `brand_id` UUID.
+2. **Customers (`customers`)**: Raw demographic details.
+   - Enforces unique indexing on `(brand_id, external_customer_id)`, `(brand_id, email)`, and `(brand_id, phone)` to handle upserts gracefully and eliminate duplicates.
+3. **Orders (`orders`)**: Log of raw customer transactions containing status, currencies, amounts, and transaction dates.
+   - Enforces unique indexing on `(brand_id, external_order_id)`.
+4. **Customer Metrics (`customer_metrics`)**: Batch-calculated analytics table acting as a persistent Cache for audience filtering.
+   - Tracks CLV, purchase frequencies, average order values (AOV), loyalty scores, and churn risk levels.
+5. **Strategist Session & Message Logs (`strategist_sessions`, `strategist_messages`)**: Keeps track of conversational states and AI-assisted drafting history.
+6. **Campaign Drafts (`campaign_drafts`)**: JSONB-based document store supporting multi-version campaign planning and milestones.
+7. **Campaigns & Communications (`campaigns`, `communications`, `communication_events`, `campaign_metrics`)**: Manages campaign status (`DRAFT`, `APPROVED`, `RUNNING`, `COMPLETED`, `FAILED`), targeting filters, simulated delivery queues, and telemetry logs (Sent, Delivered, Opened, Clicked, Purchased).
+8. **Business Intelligence (`business_insights`, `campaign_intelligence_summaries`, `executive_briefs`)**: Stores opportunity detector alerts, channel efficacy matrixes, and executive briefs.
 
-## Scale Considerations
+---
 
-### Current Assumptions and Constraints
-- Dataset Scale: Optimized for up to 10,000 customers per brand.
-- Campaign Volume: Designed to support 100 campaign launches per day.
-- Delivery Model: Utilizes simulated delivery loops for rapid prototyping and feedback.
-- Processing: Current synchronous ingestion assumes datasets of up to 10,000 customers and 100,000 orders per upload to stay within standard HTTP timeout windows (30-60 seconds).
+## 🧮 Mathematical & Statistical Core Models
 
-### Production Roadmap Improvements
-- Event Streaming: Integration of Apache Kafka for high-throughput, asynchronous event processing.
-- Advanced Caching: Implementation of Redis for distributed session management and real-time analytical caching.
-- Background Workers: Migration of data ingestion and campaign dispatching to dedicated worker clusters (e.g., BullMQ) to handle 1M+ records.
-- Event Sourcing: Transitioning the communication log to an event-sourced architecture for absolute data auditability.
-- Horizontal Scaling: Containerized service architecture designed for elastic scaling across Kubernetes clusters.
+Catalyst replaces arbitrary heuristics with solid mathematical and window-based SQL metrics compiled natively inside PostgreSQL using Common Table Expressions (CTEs).
 
-## Technical Stack
+### 1. Inter-Purchase Interval & Order Gaps
+To track customer order patterns, Catalyst computes the delta between successive transactions per customer:
+$$\text{gap} = \text{order\_date} - \text{LAG}(\text{order\_date}) \text{ OVER } (\text{PARTITION BY } \text{customer\_id} \text{ ORDER BY } \text{order\_date})$$
 
-### Frontend
-- React 19, TypeScript, Vite 8
-- Tailwind CSS, Framer Motion
-- Recharts, Lucide React
+The average gap interval is calculated per customer as:
+$$\text{avg\_days\_between\_orders} = \frac{1}{N - 1} \sum_{i=1}^{N-1} \text{gap}_i$$
 
-### Backend
-- Node.js, Express 5
-- PostgreSQL (Analytical CTEs)
-- OpenRouter AI (LLM Orchestration)
-- pg-format (Bulk SQL Optimization)
+### 2. Weighted Loyalty Score
+The loyalty score ($L \in [0, 100]$) assesses a customer's strength across Spend, Frequency, and Recency:
+$$L = w_1 \cdot S_{\text{rank}} + w_2 \cdot F_{\text{score}} + w_3 \cdot R_{\text{score}}$$
+
+Where:
+- **Spend Rank ($S_{\text{rank}}$ - 40% Weight)**: Customer's position relative to the brand's percentile ranks ($p_0$ to $p_{100}$ spend):
+  $$S_{\text{rank}} = \frac{\min(\text{total\_spend}, p_{100}) - p_0}{p_{100} - p_0} \times 40$$
+- **Frequency Score ($F_{\text{score}}$ - 40% Weight)**: Average monthly purchases capped at a maximum factor of 10:
+  $$F_{\text{score}} = \min(\text{purchase\_frequency}, 10) \times 4$$
+- **Recency Score ($R_{\text{score}}$ - 20% Weight)**: Measures the delay of the last order relative to the average brand gap:
+  $$R_{\text{score}} = \max\left(0, \left(1 - \min\left(\frac{\text{days\_since\_last\_purchase}}{\text{brand\_avg\_gap\_days}}, 1\right)\right) \times 20\right)$$
+
+### 3. Predictive Churn Score
+The churn score ($C \in [0, 100]$) tracks the likelihood of customer churn by comparing the current inactivity window to their historical order frequency:
+$$C = \min\left(\left(\frac{\text{days\_since\_last\_purchase}}{\text{avg\_days\_between\_orders}}\right) \times 100, 100\right)$$
+
+---
+
+## 🤖 AI Strategist & Validation Pipeline
+
+Catalyst integrates a state-of-the-art LLM workflow (via OpenRouter OpenAI models) that drives interactive planning.
+
+### Natural Language to SQL Compilation
+Instead of relying on unstable SQL generation that could expose the database to structure disclosure or security risks, Catalyst uses a multi-layered validation compiler:
+1. **Goal Analysis**: The AI reads the user's natural language goal and brand context to produce a structured JSON Filter Plan.
+2. **Filter Validation Engine (`validateFilterPlan`)**: The backend parses this plan against a strict `metric_registry` whitelist. Only approved fields, operators ($>, <, =, \text{IN}$, etc.), and types (number, string) are allowed. Unsupported elements or syntax trigger a graceful fallback.
+3. **Query Compiler (`buildAudienceQuery`)**: Compiles validated JSON plans into fully parameterized SQL query strings, protecting the database from SQL injection attacks.
+4. **Simulation & Forecasting**:
+   - Compiles audience size dynamically.
+   - Calculates statistical conversion forecasts (e.g. Expected Revenue = Forecased Conversions $\times$ Average Order Value).
+
+---
+
+## ⚡ Performance Optimization & Technical Stack
+
+### Technical Stack
+*   **Frontend**: React 19, TypeScript, Vite 8, Framer Motion, Tailwind CSS, Recharts.
+*   **Backend**: Node.js, Express 5, PostgreSQL, OpenRouter AI, pg-format, csv-parse.
+
+### Key Optimization Implementations
+
+*   **Responsive Smooth-Scroll Pipeline**:
+    *   Powered by a custom `SmoothScrollProvider` wrapping **Lenis** with `duration: 0.8`, `lerp: 0.1`, and `autoResize: true`.
+    *   **Responsive Guard**: Dynamically detects touch devices and viewport sizes ($< 768\text{px}$). Disables smooth-scroll on mobile to rely on native touch physics, preventing scroll jitter and trackpad lockups.
+*   **Lazy Chart Rendering**:
+    *   To prevent main-thread blocking during complex layout rendering, heavy dashboard graphs are lazily mounted with a micro-delay, presenting sleek skeleton loaders to keep page navigation instantaneous.
+*   **Chunked Ingestion Pipeline**:
+    *   CSV imports are processed in memory and written in batch chunks of 1,000 records using parameterized `pg-format` helper arrays, maintaining ultra-low SQL parsing overhead.
+*   **Unique Index Upserts**:
+    *   Resolves duplicates at the database layer using `ON CONFLICT (brand_id, external_customer_id) DO UPDATE SET` clauses.
+
+---
+
+## 📈 Scale & Limits (In Numbers)
+
+| Metric / Boundary | Value | Technical Context |
+| :--- | :--- | :--- |
+| **Max Concurrent Upload Size** | 50 MB | Express payload body limits |
+| **Ingestion Chunk Size** | 1,000 records | Optimal database batch insert size |
+| **Max Filter Limit** | 5 filters per plan | Prevents excessive JOIN overhead |
+| **Rate Limit (General)** | 100 requests / 15 mins | Production rate limiter threshold |
+| **Rate Limit (Uploads)** | 5 uploads / 10 mins | CPU/Network protective limits in production |
+| **Target Scale (Prototype)** | 10,000 customers / 100k orders | Designed for sub-minute synchronous ingestion |
+
+---
+
+## 🚀 Future Roadmap & Scaling Strategy
+
+1. **Distributed Task Queue**: Offload CSV file parsing and analytics batch jobs to Redis-backed message brokers like **BullMQ** or **Celery** to handle millions of records.
+2. **Event Streaming**: Introduce **Apache Kafka** or RabbitMQ to stream order events in real-time and compute metrics incrementally rather than in full-table recalculation batches.
+3. **Caching Layer**: Integrate **Redis** caching for static dashboard analytics summaries, executive brief text blocks, and active chat logs.
+4. **RBAC Authentication**: Standardize secure tenant segregation with OAuth 2.0 / JWT and Role-Based Access Control.
