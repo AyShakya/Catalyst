@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle, Info } from 'lucide-react';
+import { UploadCloud, CheckCircle2, Loader2, ArrowLeft, Sparkles, AlertCircle, Info, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrand, uploadData } from '../services/brandService';
 import { fileToBase64 } from '../utils/fileUtils';
@@ -761,6 +761,23 @@ ORD00000500,CUST000077,99,INR,2026-06-14,COMPLETED`;
               </p>
               <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
                 Large file sizes will take extra time to complete processing. Please keep waiting and do not close this window while Catalyst builds your workspace.
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-4 flex gap-3 items-start p-4 bg-accent/5 border border-accent/10 rounded-2xl text-accent"
+          >
+            <Zap size={16} className="shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-1">
+              <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase">
+                Render Free Tier Notice
+              </p>
+              <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
+                The CRM backend is hosted on a free tier and may sleep when inactive. The first request to build your workspace can take 30-50 seconds to activate. Please keep this window open while the server wakes up.
               </p>
             </div>
           </motion.div>

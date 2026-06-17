@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   Send, Clock, CheckCircle2, ChevronRight, 
-  BarChart3, Users, MessageSquare 
+  BarChart3, Users, MessageSquare, Zap 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getCampaigns } from '../services/brandService';
@@ -57,6 +57,22 @@ const CampaignsPage: React.FC = () => {
           New Strategy <Send size={16} />
         </button>
       </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex gap-3 items-start p-4 bg-accent/5 border border-accent/10 rounded-2xl text-accent"
+      >
+        <Zap size={16} className="shrink-0 mt-0.5 animate-pulse text-accent" />
+        <div className="space-y-1">
+          <p className="text-[10px] sm:text-xs font-black leading-relaxed tracking-wide uppercase text-foreground">
+            Channel Service Spin-Up Notice
+          </p>
+          <p className="text-[9px] sm:text-[11px] text-secondary font-semibold leading-relaxed">
+            The communication engine is hosted on Render's free tier. When launching a campaign, the first communication events may take 30-40 seconds to start executing as the server spins up. This delay is due to server cold start and does not affect regular execution.
+          </p>
+        </div>
+      </motion.div>
 
       {campaigns.length === 0 ? (
         !loading && (
