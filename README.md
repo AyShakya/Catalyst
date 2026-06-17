@@ -4,7 +4,7 @@ Catalyst is a premium, enterprise-grade AI-native Customer Relationship Manager 
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+## System Architecture & Data Flow
 
 Catalyst separates ingestion, batch analytical computations, and generative AI orchestration to ensure sub-second UI responsiveness, absolute data safety, and robust campaign forecasting.
 
@@ -25,7 +25,7 @@ graph TD
 
 ---
 
-## 🗂️ Database Schema & Data Models
+## Database Schema & Data Models
 
 Catalyst leverages a structured relational database with robust indexes, foreign keys with cascading deletions, and distinct constraints to maintain data integrity.
 
@@ -45,7 +45,7 @@ Catalyst leverages a structured relational database with robust indexes, foreign
 
 ---
 
-## 🧮 Mathematical & Statistical Core Models
+## Mathematical & Statistical Core Models
 
 Catalyst replaces arbitrary heuristics with solid mathematical and window-based SQL metrics compiled natively inside PostgreSQL using Common Table Expressions (CTEs). To prevent markdown rendering conflicts on platforms like GitHub, all variable names are written using clean spacing inside text blocks rather than raw underscores.
 
@@ -78,7 +78,7 @@ $$C = \min\left(\left(\frac{\text{days since last purchase}}{\text{avg days betw
 
 ---
 
-## 🤖 AI Strategist & Validation Pipeline
+## AI Strategist & Validation Pipeline
 
 Catalyst integrates a state-of-the-art LLM workflow (via OpenRouter OpenAI models) that drives interactive planning.
 
@@ -113,7 +113,7 @@ Instead of relying on unstable SQL generation that could expose the database to 
 
 ---
 
-## 📈 Scale & Limits (In Numbers)
+## Scale & Limits (In Numbers)
 
 | Metric / Boundary | Value | Technical Context |
 | :--- | :--- | :--- |
@@ -126,7 +126,7 @@ Instead of relying on unstable SQL generation that could expose the database to 
 
 ---
 
-## 🚀 Future Roadmap & Scaling Strategy
+## Future Roadmap & Scaling Strategy
 
 1. **Distributed Task Queue**: Offload CSV file parsing and analytics batch jobs to Redis-backed message brokers like **BullMQ** or **Celery** to handle millions of records.
 2. **Event Streaming**: Introduce **Apache Kafka** or RabbitMQ to stream order events in real-time and compute metrics incrementally rather than in full-table recalculation batches.
