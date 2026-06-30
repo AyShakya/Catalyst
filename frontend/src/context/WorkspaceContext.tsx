@@ -41,8 +41,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (brandList.length === 0) {
           setActiveBrand(null);
           localStorage.removeItem('catalyst_brand_id');
-          // If we are not already on setup or landing page, redirect to setup
-          if (location.pathname !== '/' && location.pathname !== '/setup') {
+          // If we are not already on setup, landing page, or docx page, redirect to setup
+          if (location.pathname !== '/' && location.pathname !== '/setup' && location.pathname !== '/docx') {
             navigate('/setup');
           }
           return;
